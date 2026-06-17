@@ -18,6 +18,7 @@ import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedDashboardCreateRouteImport } from './routes/_authenticated/dashboard.create'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
+import { Route as AuthenticatedAdminPlansRouteImport } from './routes/_authenticated/admin.plans'
 import { Route as AuthenticatedAdminBotsRouteImport } from './routes/_authenticated/admin.bots'
 import { Route as ApiPublicCronExpireBotsRouteImport } from './routes/api/public/cron.expire-bots'
 import { Route as ApiPublicBankIssueRouteImport } from './routes/api/public/bank.issue'
@@ -71,6 +72,11 @@ const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminPlansRoute = AuthenticatedAdminPlansRouteImport.update({
+  id: '/plans',
+  path: '/plans',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminBotsRoute = AuthenticatedAdminBotsRouteImport.update({
   id: '/bots',
   path: '/bots',
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/profile': typeof AuthenticatedProfileRoute
   '/admin/bots': typeof AuthenticatedAdminBotsRoute
+  '/admin/plans': typeof AuthenticatedAdminPlansRoute
   '/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/dashboard/create': typeof AuthenticatedDashboardCreateRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/admin/bots': typeof AuthenticatedAdminBotsRoute
+  '/admin/plans': typeof AuthenticatedAdminPlansRoute
   '/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/dashboard/create': typeof AuthenticatedDashboardCreateRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/admin/bots': typeof AuthenticatedAdminBotsRoute
+  '/_authenticated/admin/plans': typeof AuthenticatedAdminPlansRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/_authenticated/dashboard/create': typeof AuthenticatedDashboardCreateRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/profile'
     | '/admin/bots'
+    | '/admin/plans'
     | '/admin/users'
     | '/dashboard/create'
     | '/admin/'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/profile'
     | '/admin/bots'
+    | '/admin/plans'
     | '/admin/users'
     | '/dashboard/create'
     | '/admin'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/profile'
     | '/_authenticated/admin/bots'
+    | '/_authenticated/admin/plans'
     | '/_authenticated/admin/users'
     | '/_authenticated/dashboard/create'
     | '/_authenticated/admin/'
@@ -278,6 +290,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/plans': {
+      id: '/_authenticated/admin/plans'
+      path: '/plans'
+      fullPath: '/admin/plans'
+      preLoaderRoute: typeof AuthenticatedAdminPlansRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/bots': {
       id: '/_authenticated/admin/bots'
       path: '/bots'
@@ -339,12 +358,14 @@ const AuthenticatedAdminUsersRouteWithChildren =
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminBotsRoute: typeof AuthenticatedAdminBotsRoute
+  AuthenticatedAdminPlansRoute: typeof AuthenticatedAdminPlansRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRouteWithChildren
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminBotsRoute: AuthenticatedAdminBotsRoute,
+  AuthenticatedAdminPlansRoute: AuthenticatedAdminPlansRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRouteWithChildren,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
