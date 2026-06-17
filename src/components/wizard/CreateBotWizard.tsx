@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,14 +10,16 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { wizardSchema, type WizardData, partialWizardData } from "@/lib/wizard-schema";
 import { createBot } from "@/lib/bots.functions";
+import { purchaseBotPlan, startFreeTrial } from "@/lib/wallet.functions";
 import { Step1Basic } from "./steps/Step1Basic";
 import { Step2Owner } from "./steps/Step2Owner";
 import { Step3Radio } from "./steps/Step3Radio";
 import { Step4Terms } from "./steps/Step4Terms";
+import { StepPlan } from "./steps/StepPlan";
 import { StepSummary } from "./steps/StepSummary";
 import { SuccessScreen } from "./SuccessScreen";
 
-const STEPS = ["Basics", "Owner", "Radio", "Terms", "Review"] as const;
+const STEPS = ["Basics", "Owner", "Radio", "Terms", "Plan", "Review"] as const;
 
 type CreatedBot = {
   id: string;
@@ -38,6 +41,9 @@ export function CreateBotWizard({
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<CreatedBot | null>(null);
   const createBotFn = useServerFn(createBot);
+  const purchaseFn = useServerFn(purchaseBotPlan);
+  const trialFn = useServerFn(startFreeTrial);
+  const qc = useQueryClient();
 
   const reset = () => {
     setStep(0);
@@ -68,6 +74,8 @@ export function CreateBotWizard({
       case 3:
         return form.agreedToTerms === true;
       case 4:
+        return form.plan !== "";
+      case 5:
         return true;
       default:
         return false;
@@ -90,11 +98,32 @@ export function CreateBotWizard({
       toast.error(parsed.error.errors[0]?.message ?? "Invalid input");
       return;
     }
+    if (!form.plan) {
+      toast.error("Please choose a plan");
+      setStep(4);
+      return;
+    }
     setSubmitting(true);
     try {
       const bot = (await createBotFn({ data: parsed.data as WizardData })) as CreatedBot;
+      try {
+        if (form.plan === "trial") {
+          await trialFn({ data: { botId: bot.id } });
+          toast.success("Free 24-hour trial activated");
+        } else {
+          await purchaseFn({ data: { botId: bot.id, duration: form.plan } });
+          toast.success(`Plan activated: ${form.plan}`);
+        }
+      } catch (planErr) {
+        toast.error(
+          `Bot created, but plan activation failed: ${(planErr as Error).message}`,
+        );
+      }
+      qc.invalidateQueries({ queryKey: ["trial-status"] });
+      qc.invalidateQueries({ queryKey: ["wallet-summary"] });
+      qc.invalidateQueries({ queryKey: ["wallet"] });
+      qc.invalidateQueries({ queryKey: ["bots"] });
       setSuccess(bot);
-      toast.success("Bot created successfully");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to create bot";
       toast.error(message);
@@ -164,7 +193,8 @@ export function CreateBotWizard({
                   {step === 1 && <Step2Owner form={form} update={update} />}
                   {step === 2 && <Step3Radio form={form} update={update} />}
                   {step === 3 && <Step4Terms form={form} update={update} />}
-                  {step === 4 && <StepSummary form={form} />}
+                  {step === 4 && <StepPlan form={form} update={update} />}
+                  {step === 5 && <StepSummary form={form} />}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -192,7 +222,7 @@ export function CreateBotWizard({
                 <Button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={submitting || !validateStep(3)}
+                  disabled={submitting || !validateStep(3) || !validateStep(4)}
                   className="gap-2 glow-primary"
                 >
                   {submitting ? (
