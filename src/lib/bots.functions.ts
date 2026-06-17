@@ -502,6 +502,32 @@ async function patchConfigInStorage(storagePath: string, patch: PartialBotPatch)
   const { error: upErr } = await admin.storage.from(USER_BUCKET)
     .upload(cfgPath, next, { upsert: true, contentType: "application/json" });
   if (upErr) throw new Error("Cannot write config.json: " + upErr.message);
+  if (patch.admins !== undefined) {
+    await patchMusicbotPosAdmins(storagePath, patch.admins);
+  }
+}
+
+async function patchMusicbotPosAdmins(storagePath: string, admins: string[]) {
+  const admin = await loadAdmin();
+  const posPath = storagePath + "/musicbot_pos.json";
+  let current: Record<string, unknown> = {
+    bot_position: { x: 18.5, y: 0.25, z: 14.5 },
+    ctoggle: false,
+    nightcore: false,
+    daycore: false,
+    admins: [],
+  };
+  const { data: blob } = await admin.storage.from(USER_BUCKET).download(posPath);
+  if (blob) {
+    try {
+      const parsed = JSON.parse(await blob.text());
+      if (parsed && typeof parsed === "object") current = { ...current, ...parsed };
+    } catch { /* keep defaults */ }
+  }
+  current.admins = admins;
+  const { error: upErr } = await admin.storage.from(USER_BUCKET)
+    .upload(posPath, JSON.stringify(current, null, 2), { upsert: true, contentType: "application/json" });
+  if (upErr) throw new Error("Cannot write musicbot_pos.json: " + upErr.message);
 }
 
 // ============================================================
