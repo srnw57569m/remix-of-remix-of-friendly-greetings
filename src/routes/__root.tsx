@@ -98,13 +98,38 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function Footer() {
+  return (
+    <footer className="border-t border-white/5 py-10 text-center text-sm text-muted-foreground">
+      <p>© 2026 BeatlY — Premium sound. Power servers.</p>
+      <p className="mt-2">
+        If you want to support us, you can tip us at{" "}
+        <a
+          href="https://www.paypal.me/ahmedashraf789"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline underline-offset-4 text-accent hover:text-primary transition-colors"
+        >
+          PayPal
+        </a>
+        .
+      </p>
+    </footer>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Navbar />
-        <Outlet />
+        <div className="flex min-h-screen flex-col">
+          <Navbar />
+          <div className="flex-1">
+            <Outlet />
+          </div>
+          <Footer />
+        </div>
         <Toaster theme="dark" position="top-right" richColors />
       </AuthProvider>
     </QueryClientProvider>
