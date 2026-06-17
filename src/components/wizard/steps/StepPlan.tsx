@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles, Coins, Check } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Sparkles, Coins, Check, Link2, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { listPlans, getTrialStatus, getWallet } from "@/lib/wallet.functions";
+import { getMyProfile } from "@/lib/profile.functions";
 import type { partialWizardData, PlanChoice } from "@/lib/wizard-schema";
 
 type Form = typeof partialWizardData;
@@ -17,13 +19,16 @@ export function StepPlan({
   const listFn = useServerFn(listPlans);
   const trialFn = useServerFn(getTrialStatus);
   const walletFn = useServerFn(getWallet);
+  const profileFn = useServerFn(getMyProfile);
 
   const { data: plans = [] } = useQuery({ queryKey: ["plans"], queryFn: () => listFn() });
   const { data: trial } = useQuery({ queryKey: ["trial-status"], queryFn: () => trialFn() });
   const { data: wallet } = useQuery({ queryKey: ["wallet-summary"], queryFn: () => walletFn() });
+  const { data: profile } = useQuery({ queryKey: ["my-profile"], queryFn: () => profileFn() });
 
   const trialUsed = trial?.freeTrialUsed ?? false;
   const balance = wallet?.balance ?? 0;
+  const highriseLinked = Boolean(profile?.highrise_id);
   const selected = form.plan as PlanChoice | "";
 
   const pick = (p: PlanChoice) => update("plan", p);
@@ -36,6 +41,39 @@ export function StepPlan({
           Your bot is activated immediately after creation. Balance: <span className="text-amber-300 font-mono">{balance}g</span>
         </p>
       </div>
+
+      {balance === 0 && !highriseLinked && (
+        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
+          <div className="flex items-start gap-3">
+            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-400/20">
+              <Coins className="size-4 text-amber-300" />
+            </div>
+            <div className="flex-1">
+              <p className="font-display text-sm font-semibold text-amber-100">No gold yet?</p>
+              <p className="mt-1 text-xs text-amber-100/80">
+                Link your Highrise account first, then tip the bot in Highrise with gold —
+                the same amount is credited to your wallet here automatically.
+              </p>
+              <Link
+                to="/profile"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3 py-1.5 text-xs font-medium text-amber-100 transition-colors hover:bg-amber-400/30"
+              >
+                <Link2 className="size-3.5" /> Go to profile to link Highrise
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {balance === 0 && highriseLinked && (
+        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-xs text-amber-100/90">
+          Your Highrise account is linked. Tip the bot in Highrise with gold and the same
+          amount will be credited to your wallet here automatically.
+        </div>
+      )}
+
+
 
       {!trialUsed && (
         <button
