@@ -77,18 +77,19 @@ export function StepPlan({
               key={p.duration}
               type="button"
               onClick={() => pick(p.duration as PlanChoice)}
-              disabled={!canAfford}
               className={cn(
                 "flex items-center justify-between rounded-2xl border p-4 text-left transition-all",
                 isSelected
                   ? "border-primary bg-primary/10 shadow-[0_0_0_3px_oklch(0.62_0.22_250/0.2)]"
                   : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]",
-                !canAfford && "cursor-not-allowed opacity-50",
               )}
             >
               <div>
                 <p className="font-display text-sm font-semibold capitalize">{p.label || p.duration}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{p.interval_sql}</p>
+                {!canAfford && (
+                  <p className="mt-1 text-[10px] text-rose-300">Insufficient balance — top up to activate</p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Coins className="size-3.5 text-amber-300" />
@@ -104,6 +105,9 @@ export function StepPlan({
         <p className="text-xs text-muted-foreground">
           You've already used your free trial. Pick a paid plan above.
         </p>
+      )}
+      {plans.length === 0 && (
+        <p className="text-xs text-muted-foreground">No paid plans available right now.</p>
       )}
     </div>
   );
