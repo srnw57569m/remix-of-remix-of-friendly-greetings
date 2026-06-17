@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { wizardSchema, type WizardData, partialWizardData } from "@/lib/wizard-schema";
-import { createBot } from "@/lib/bots.functions";
+import { createBot, deleteBot } from "@/lib/bots.functions";
 import { purchaseBotPlan, startFreeTrial } from "@/lib/wallet.functions";
 import { Step1Basic } from "./steps/Step1Basic";
 import { Step2Owner } from "./steps/Step2Owner";
