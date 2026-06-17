@@ -326,7 +326,7 @@ export type Database = {
         }[]
       }
       start_free_trial: {
-        Args: { _bot_id: string }
+        Args: { _bot_id: string; _user_id: string }
         Returns: {
           bot_id: string
           expires_at: string
