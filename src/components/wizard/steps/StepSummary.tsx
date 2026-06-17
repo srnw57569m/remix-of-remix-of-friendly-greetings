@@ -23,6 +23,8 @@ export function StepSummary({ form }: { form: Form }) {
       <Row label="Mount Point" value={form.mountPoint} />
       <Row label="Icecast Username" value={form.icecastUsername} />
       <Row label="Icecast Password" value={"•".repeat(Math.min(form.icecastPassword.length, 10))} />
+      <Row label="Plan" value={form.plan === "trial" ? "Free Trial (24h)" : (form.plan || "—")} />
     </div>
   );
 }
+
