@@ -51,7 +51,7 @@ import {
   setSubscription,
   updateBotConfig,
 } from "@/lib/bots.functions";
-import { getWallet, purchaseBotPlan, PLAN_CATALOG, type PlanDuration } from "@/lib/wallet.functions";
+import { getWallet, purchaseBotPlan, listPlans, type PlanDuration } from "@/lib/wallet.functions";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 
 export const Route = createFileRoute("/_authenticated/dashboard/bot/$botId")({
