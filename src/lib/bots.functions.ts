@@ -394,7 +394,7 @@ export const addBotAdmin = createServerFn({ method: "POST" })
     const { error: upErr } = await supabase.from("bots").update({ admins })
       .eq("id", data.botId).eq("user_id", userId);
     if (upErr) throw new Error(upErr.message);
-    await patchConfigInStorage(bot.storage_path, { admins });
+    await patchConfigInStorage(bot.storage_path, { admins }, data.botId);
     await logActivity(supabase, userId, data.botId, "admin_added", data.username);
     return { admins };
   });
@@ -413,7 +413,7 @@ export const removeBotAdmin = createServerFn({ method: "POST" })
     const { error: upErr } = await supabase.from("bots").update({ admins })
       .eq("id", data.botId).eq("user_id", userId);
     if (upErr) throw new Error(upErr.message);
-    await patchConfigInStorage(bot.storage_path, { admins });
+    await patchConfigInStorage(bot.storage_path, { admins }, data.botId);
     await logActivity(supabase, userId, data.botId, "admin_removed", data.username);
     return { admins };
   });
