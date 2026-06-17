@@ -104,8 +104,9 @@ export function CreateBotWizard({
       return;
     }
     setSubmitting(true);
+    let bot: CreatedBot | null = null;
     try {
-      const bot = (await createBotFn({ data: parsed.data as WizardData })) as CreatedBot;
+      bot = (await createBotFn({ data: parsed.data as WizardData })) as CreatedBot;
       try {
         if (form.plan === "trial") {
           await trialFn({ data: { botId: bot.id } });
@@ -115,8 +116,13 @@ export function CreateBotWizard({
           toast.success(`Plan activated: ${form.plan}`);
         }
       } catch (planErr) {
-        toast.error(
-          `Bot created, but plan activation failed: ${(planErr as Error).message}`,
+        // Roll back the bot so the user isn't left with an unpaid bot.
+        try {
+          await deleteBotFn({ data: { botId: bot.id } });
+        } catch { /* best-effort */ }
+        bot = null;
+        throw new Error(
+          `Bot creation cancelled: ${(planErr as Error).message}`,
         );
       }
       qc.invalidateQueries({ queryKey: ["trial-status"] });
