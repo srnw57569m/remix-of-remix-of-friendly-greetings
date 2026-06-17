@@ -64,6 +64,7 @@ export type Database = {
           last_restart_at: string | null
           mount_point: string
           owner_username: string
+          plan_duration: string | null
           room_id: string
           status: string
           storage_path: string
@@ -86,6 +87,7 @@ export type Database = {
           last_restart_at?: string | null
           mount_point: string
           owner_username: string
+          plan_duration?: string | null
           room_id: string
           status?: string
           storage_path: string
@@ -108,6 +110,7 @@ export type Database = {
           last_restart_at?: string | null
           mount_point?: string
           owner_username?: string
+          plan_duration?: string | null
           room_id?: string
           status?: string
           storage_path?: string
@@ -159,6 +162,7 @@ export type Database = {
           updated_at: string
           user_id: string
           username: string
+          wallet_balance: number
         }
         Insert: {
           created_at?: string
@@ -173,6 +177,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username: string
+          wallet_balance?: number
         }
         Update: {
           created_at?: string
@@ -187,6 +192,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string
+          wallet_balance?: number
         }
         Relationships: []
       }
@@ -211,12 +217,73 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          detail: string | null
+          id: string
+          kind: string
+          reference: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string
+          detail?: string | null
+          id?: string
+          kind: string
+          reference?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          detail?: string | null
+          id?: string
+          kind?: string
+          reference?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      bank_deposit_by_highrise: {
+        Args: { _amount: number; _highrise_id: string; _username: string }
+        Returns: {
+          balance_after: number
+          user_id: string
+        }[]
+      }
+      purchase_bot_plan: {
+        Args: {
+          _bot_id: string
+          _duration: string
+          _interval: string
+          _price: number
+          _user_id: string
+        }
+        Returns: {
+          balance_after: number
+          bot_id: string
+          expires_at: string
+        }[]
+      }
     }
     Enums: {
       app_role: "user" | "moderator" | "admin" | "super_admin"
