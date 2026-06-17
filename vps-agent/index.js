@@ -105,7 +105,13 @@ async function pipInstallInBotVenv(botId) {
   const { venv } = await ensureBotVenv(botId);
   const pip = path.join(venv, "bin", "pip");
 
-  const pipRes = await run(pip, ["install", "--upgrade", "pip", "setuptools", "wheel"]);
+  const pipRes = await run(pip, [
+  "install",
+  "--upgrade",
+  "pip",
+  "setuptools==68.2.2",
+  "wheel"
+  ]);
   if (pipRes.code !== 0) {
     throw new Error(
       `pip bootstrap failed for bot ${botId}. stderr: ${pipRes.stderr.slice(-2000)}`
