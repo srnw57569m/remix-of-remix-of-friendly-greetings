@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { wizardSchema, type WizardData, partialWizardData } from "@/lib/wizard-schema";
 import { createBot, deleteBot } from "@/lib/bots.functions";
-import { purchaseBotPlan, startFreeTrial } from "@/lib/wallet.functions";
+import { purchaseBotPlan, startFreeTrial, listPlans, getWallet, getTrialStatus } from "@/lib/wallet.functions";
 import { Step1Basic } from "./steps/Step1Basic";
 import { Step2Owner } from "./steps/Step2Owner";
 import { Step3Radio } from "./steps/Step3Radio";
@@ -44,7 +44,27 @@ export function CreateBotWizard({
   const deleteBotFn = useServerFn(deleteBot);
   const purchaseFn = useServerFn(purchaseBotPlan);
   const trialFn = useServerFn(startFreeTrial);
+  const listPlansFn = useServerFn(listPlans);
+  const walletFn = useServerFn(getWallet);
+  const trialStatusFn = useServerFn(getTrialStatus);
   const qc = useQueryClient();
+
+  const { data: plans = [] } = useQuery({ queryKey: ["plans"], queryFn: () => listPlansFn() });
+  const { data: wallet } = useQuery({ queryKey: ["wallet-summary"], queryFn: () => walletFn() });
+  const { data: trial } = useQuery({ queryKey: ["trial-status"], queryFn: () => trialStatusFn() });
+
+  const balance = wallet?.balance ?? 0;
+  const trialUsed = trial?.freeTrialUsed ?? false;
+
+  const selectedPlanPrice =
+    form.plan && form.plan !== "trial"
+      ? (plans as any[]).find((p) => p.duration === form.plan)?.price ?? 0
+      : 0;
+
+  const canAfford =
+    form.plan === "trial"
+      ? !trialUsed
+      : form.plan !== "" && balance >= selectedPlanPrice;
 
   const reset = () => {
     setStep(0);
@@ -226,20 +246,27 @@ export function CreateBotWizard({
                   Next <ChevronRight className="size-4" />
                 </Button>
               ) : (
-                <Button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={submitting || !validateStep(3) || !validateStep(4)}
-                  className="gap-2 glow-primary"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" /> Creating…
-                    </>
-                  ) : (
-                    "Create Bot"
+                <div className="flex flex-col items-end gap-2">
+                  {!canAfford && form.plan && (
+                    <p className="text-xs text-rose-300">
+                      Insufficient gold credits for the selected plan.
+                    </p>
                   )}
-                </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={submitting || !validateStep(3) || !validateStep(4) || !canAfford}
+                    className="gap-2 glow-primary"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" /> Creating…
+                      </>
+                    ) : (
+                      "Create Bot"
+                    )}
+                  </Button>
+                </div>
               )}
             </div>
           </div>
