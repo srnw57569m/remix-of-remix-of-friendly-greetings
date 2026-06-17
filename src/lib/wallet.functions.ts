@@ -146,3 +146,90 @@ export const updatePlanPrice = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+export const getTrialStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("free_trial_used")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return { freeTrialUsed: Boolean((data as any)?.free_trial_used) };
+  });
+
+export const startFreeTrial = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ botId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: result, error } = await supabaseAdmin.rpc("start_free_trial", {
+      _bot_id: data.botId,
+    });
+    if (error) throw new Error(error.message);
+    const row = Array.isArray(result) ? result[0] : result;
+
+    try {
+      const { agent, isAgentConfigured, buildBotConfig } = await import("./vps-agent.server");
+      if (isAgentConfigured()) {
+        try {
+          await agent.start(data.botId);
+        } catch (e) {
+          if (/not deployed/i.test((e as Error).message)) {
+            const { data: full } = await supabaseAdmin.from("bots").select("*").eq("id", data.botId).single();
+            if (full) {
+              await agent.deploy(full.id, buildBotConfig({
+                ...full,
+                admins: Array.isArray(full.admins) ? (full.admins as string[]) : [],
+              }));
+              await agent.start(data.botId);
+            }
+          }
+        }
+        await supabaseAdmin.from("bots").update({ status: "Online" }).eq("id", data.botId);
+      }
+    } catch {
+      // non-fatal
+    }
+
+    void userId;
+    return {
+      botId: row?.bot_id ?? data.botId,
+      expiresAt: row?.expires_at ?? null,
+    };
+  });
+
+export const adminGrantBotTime = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      botId: z.string().uuid(),
+      hours: z.coerce.number().int().min(1).max(24 * 365 * 5),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .in("role", ["admin", "super_admin"]);
+    if (!roles || roles.length === 0) throw new Error("Forbidden: admin role required");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: result, error } = await supabaseAdmin.rpc("admin_grant_bot_time", {
+      _bot_id: data.botId,
+      _hours: data.hours,
+    });
+    if (error) throw new Error(error.message);
+    const row = Array.isArray(result) ? result[0] : result;
+    return {
+      botId: row?.bot_id ?? data.botId,
+      expiresAt: row?.expires_at ?? null,
+    };
+  });
