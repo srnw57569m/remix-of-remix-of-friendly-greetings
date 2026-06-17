@@ -2,11 +2,22 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Play, Square, RotateCw, Pause, Trash2, Search } from "lucide-react";
+import { Play, Square, RotateCw, Pause, Trash2, Search, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { listAllBots, adminSetBotStatus, adminDeleteBot } from "@/lib/admin.functions";
+import { adminGrantBotTime } from "@/lib/wallet.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+
 
 export const Route = createFileRoute("/_authenticated/admin/bots")({
   head: () => ({ meta: [{ title: "Admin · Bots" }] }),
