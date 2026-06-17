@@ -23,7 +23,7 @@ export const connectHighrise = createServerFn({ method: "POST" })
 
     const { data: codeRow, error: codeErr } = await supabaseAdmin
       .from("highrise_codes")
-      .select("code, highrise_username, used_at")
+      .select("code, highrise_username, highrise_id, used_at")
       .eq("code", data.code)
       .maybeSingle();
 
@@ -37,6 +37,7 @@ export const connectHighrise = createServerFn({ method: "POST" })
       .from("profiles")
       .update({
         highrise_username: codeRow.highrise_username,
+        highrise_id: codeRow.highrise_id,
         highrise_connected_at: now,
       })
       .eq("user_id", context.userId);
@@ -57,7 +58,7 @@ export const disconnectHighrise = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("profiles")
-      .update({ highrise_username: null, highrise_connected_at: null })
+      .update({ highrise_username: null, highrise_id: null, highrise_connected_at: null })
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };

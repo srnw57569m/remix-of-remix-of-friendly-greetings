@@ -123,6 +123,7 @@ export type Database = {
           claimed_by: string | null
           code: string
           created_at: string
+          highrise_id: string | null
           highrise_username: string
           used_at: string | null
         }
@@ -130,6 +131,7 @@ export type Database = {
           claimed_by?: string | null
           code: string
           created_at?: string
+          highrise_id?: string | null
           highrise_username: string
           used_at?: string | null
         }
@@ -137,6 +139,7 @@ export type Database = {
           claimed_by?: string | null
           code?: string
           created_at?: string
+          highrise_id?: string | null
           highrise_username?: string
           used_at?: string | null
         }
@@ -147,6 +150,7 @@ export type Database = {
           created_at: string
           email: string
           highrise_connected_at: string | null
+          highrise_id: string | null
           highrise_username: string | null
           id: string
           suspended: boolean
@@ -160,6 +164,7 @@ export type Database = {
           created_at?: string
           email: string
           highrise_connected_at?: string | null
+          highrise_id?: string | null
           highrise_username?: string | null
           id: string
           suspended?: boolean
@@ -173,6 +178,7 @@ export type Database = {
           created_at?: string
           email?: string
           highrise_connected_at?: string | null
+          highrise_id?: string | null
           highrise_username?: string | null
           id?: string
           suspended?: boolean
