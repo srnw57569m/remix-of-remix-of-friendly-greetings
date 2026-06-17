@@ -166,13 +166,14 @@ export const startFreeTrial = createServerFn({ method: "POST" })
     z.object({ botId: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { userId } = context;
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: result, error } = await supabaseAdmin.rpc("start_free_trial", {
+    const { supabase, userId } = context;
+    // Use the user-scoped client so auth.uid() resolves inside the RPC
+    const { data: result, error } = await supabase.rpc("start_free_trial", {
       _bot_id: data.botId,
     });
     if (error) throw new Error(error.message);
-    const row = Array.isArray(result) ? result[0] : result;
+    const row = Array.isArray(result) ? (result as any)[0] : result;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     try {
       const { agent, isAgentConfigured, buildBotConfig } = await import("./vps-agent.server");
