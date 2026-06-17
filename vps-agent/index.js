@@ -21,22 +21,11 @@ const PORT = Number(process.env.PORT || 8787);
 const SECRET = process.env.AGENT_SECRET;
 const REPO_URL = process.env.BOT_REPO_URL || "";
 const BOTS_DIR = process.env.BOTS_DIR || "/opt/sonicforge-agent/bots";
-// Base interpreter used ONLY to create each bot's venv. Defaults to python3.11.
-let PYTHON = process.env.PYTHON || "python3.11";
+// Backwards compatibility: we keep PYTHON env var only as a comment.
+// This agent must NEVER use system Python to launch bot code.
+// const PYTHON = process.env.PYTHON || "python3";
 
-/** Path to a bot's dedicated venv python interpreter. */
-const venvPython = (dir) => path.join(dir, ".venv", "bin", "python");
-
-/** Pick an available Python interpreter, preferring 3.11. */
-async function resolvePython() {
-  const candidates = [PYTHON, "python3.11", "python3", "python"];
-  for (const c of candidates) {
-    if (!c) continue;
-    const r = await run(c, ["--version"]);
-    if (r.code === 0) return c;
-  }
-  return PYTHON;
-}
+const PYTHON_311 = process.env.PYTHON_311 || "python3.11";
 
 if (!SECRET) {
   console.error("FATAL: AGENT_SECRET env var is required");
@@ -61,7 +50,82 @@ function run(cmd, args, opts = {}) {
 const botDir = (botId) => path.join(BOTS_DIR, botId);
 const procName = (botId) => `bot-${botId}`;
 
+function venvDir(botId) {
+  return path.join(botDir(botId), "venv");
+}
+
+function venvPython(botId) {
+  return path.join(venvDir(botId), "bin", "python");
+}
+
+
+async function ensureBotVenv(botId) {
+  const dir = botDir(botId);
+  const venv = venvDir(botId);
+  const python = venvPython(botId);
+
+  // If venv exists and python exists, reuse it.
+  const pythonExists = await fs
+    .stat(python)
+    .then(() => true)
+    .catch(() => false);
+  if (pythonExists) return { venv, python };
+
+  // Otherwise create venv.
+  await fs.mkdir(dir, { recursive: true });
+  const mk = await run(PYTHON_311, ["-m", "venv", "venv"], { cwd: dir });
+
+
+  if (mk.code !== 0) {
+    throw new Error(
+      `Failed to create venv for bot ${botId} using ${PYTHON_311}. stderr: ${mk.stderr.slice(-2000)}`
+    );
+  }
+
+  const pipExists = await fs
+    .stat(path.join(venv, "bin", "pip"))
+    .then(() => true)
+    .catch(() => false);
+  if (!pipExists) {
+    throw new Error(`Venv created for bot ${botId}, but pip not found at ${path.join(venv, "bin", "pip")}`);
+  }
+
+  return { venv, python };
+}
+
+async function pipInstallInBotVenv(botId) {
+  const dir = botDir(botId);
+  const reqPath = path.join(dir, "requirements.txt");
+  const reqExists = await fs
+    .stat(reqPath)
+    .then(() => true)
+    .catch(() => false);
+  if (!reqExists) return;
+
+  const { venv } = await ensureBotVenv(botId);
+  const pip = path.join(venv, "bin", "pip");
+
+  const pipRes = await run(pip, ["install", "--upgrade", "pip", "setuptools", "wheel"]);
+  if (pipRes.code !== 0) {
+    throw new Error(
+      `pip bootstrap failed for bot ${botId}. stderr: ${pipRes.stderr.slice(-2000)}`
+    );
+  }
+
+  const pipInstallRes = await run(pip, ["install", "-r", reqPath]);
+  if (pipInstallRes.code !== 0) {
+    throw new Error(
+      `pip install failed for bot ${botId}. stderr: ${pipInstallRes.stderr.slice(-2000)}`
+    );
+  }
+}
+
+
+
+
+
 /** Find a single bot in pm2's JSON listing. */
+
 async function pmInfo(botId) {
   const r = await run("pm2", ["jlist"]);
   if (r.code !== 0) return null;
@@ -127,52 +191,29 @@ app.post("/deploy", async (req, res) => {
     await fs.writeFile(path.join(dir, "config.json"), JSON.stringify(config, null, 2), "utf8");
   }
 
-  // Remove any virtualenv / caches that were accidentally committed to the repo,
-  // so we always build a clean, dedicated venv for this host.
-  await fs.rm(path.join(dir, "venv"), { recursive: true, force: true });
-  await fs.rm(path.join(dir, ".venv"), { recursive: true, force: true });
-  await fs.rm(path.join(dir, "__pycache__"), { recursive: true, force: true });
-
-  // Pick an interpreter, preferring Python 3.11, and create a dedicated venv.
-  const basePy = await resolvePython();
-  const venv = await run(basePy, ["-m", "venv", path.join(dir, ".venv")]);
-  if (venv.code !== 0) {
-    return res.status(500).json({
-      ok: false,
-      error: `venv creation failed using ${basePy} (is python3.11 installed?)`,
-      detail: venv.stderr.slice(-2000),
-    });
-  }
-  const py = venvPython(dir);
-
-  // Upgrade pip tooling inside the venv (best-effort).
-  await run(py, ["-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"]);
-
-  // Install all Python deps from requirements.txt into the venv.
-  const reqPath = path.join(dir, "requirements.txt");
-  if (await fs.stat(reqPath).then(() => true).catch(() => false)) {
-    const pip = await run(py, ["-m", "pip", "install", "-r", reqPath]);
-    if (pip.code !== 0) {
-      return res.status(500).json({
-        ok: false,
-        error: "pip install failed",
-        detail: (pip.stderr || pip.stdout).slice(-2000),
-      });
-    }
+  // Create venv + install deps (if requirements.txt exists)
+  try {
+    await ensureBotVenv(botId);
+    await pipInstallInBotVenv(botId);
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 
-  // Match the bot's nixpacks setup: always pull the latest yt-dlp.
-  await run(py, ["-m", "pip", "install", "-U", "yt-dlp"]);
+  const interpreter = venvPython(botId);
 
-
-  // Register with pm2 (stopped state). `start` will launch it via the venv python.
+  // Register with pm2 (stopped state). `start` will launch it.
   const reg = await run("pm2", [
-    "start", "main.py",
-    "--name", procName(botId),
-    "--interpreter", py,
-    "--cwd", dir,
+    "start",
+    "main.py",
+    "--name",
+    procName(botId),
+    "--interpreter",
+    interpreter,
+    "--cwd",
+    dir,
     "--no-autorestart",
   ]);
+
   if (reg.code !== 0) {
     return res.status(500).json({ ok: false, error: "pm2 register failed", detail: reg.stderr });
   }
@@ -185,39 +226,56 @@ app.post("/deploy", async (req, res) => {
 app.post("/start", async (req, res) => {
   const { botId } = req.body || {};
   if (!botId) return res.status(400).json({ ok: false, error: "botId required" });
-  const dir = botDir(botId);
   // If the process doesn't exist yet (e.g. agent restarted with no save), register it.
   const info = await pmInfo(botId);
   if (!info) {
+    const dir = botDir(botId);
     const exists = await fs.stat(dir).then(() => true).catch(() => false);
     if (!exists) return res.status(404).json({ ok: false, error: "Bot not deployed" });
+    // Ensure venv exists for this bot (safe migration)
+    try {
+      await ensureBotVenv(botId);
+      await pipInstallInBotVenv(botId);
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+
+    const interpreter = venvPython(botId);
+
     const reg = await run("pm2", [
-      "start", "main.py",
-      "--name", procName(botId),
-      "--interpreter", venvPython(dir),
-      "--cwd", dir,
+      "start",
+      "main.py",
+      "--name",
+      procName(botId),
+      "--interpreter",
+      interpreter,
+      "--cwd",
+      dir,
     ]);
+
     if (reg.code !== 0) return res.status(500).json({ ok: false, error: reg.stderr });
   } else {
-    const r = await run("pm2", ["start", procName(botId)]);
-    if (r.code !== 0) return res.status(500).json({ ok: false, error: r.stderr });
-  }
-  await run("pm2", ["save"]);
+    // Hard migration safety: delete + re-register with the bot venv interpreter.
+    // This guarantees we never keep an older PM2 entry pointing to system Python.
+    await run("pm2", ["delete", procName(botId)]);
 
-  // Verify it's actually running and didn't crash on launch.
-  await new Promise((r) => setTimeout(r, 1500));
-  const after = await pmInfo(botId);
-  const status = after?.pm2_env?.status;
-  if (status !== "online") {
-    const out = await tail(after?.pm2_env?.pm_out_log_path, 40);
-    const err = await tail(after?.pm2_env?.pm_err_log_path, 40);
-    return res.status(500).json({
-      ok: false,
-      error: `Bot failed to start (status: ${status || "unknown"})`,
-      detail: [out, err].filter(Boolean).join("\n").slice(-2000),
-    });
+    const interpreter = venvPython(botId);
+    const reg = await run("pm2", [
+      "start",
+      "main.py",
+      "--name",
+      procName(botId),
+      "--interpreter",
+      interpreter,
+      "--cwd",
+      dir,
+    ]);
+
+    if (reg.code !== 0) return res.status(500).json({ ok: false, error: reg.stderr });
   }
-  res.json({ ok: true, status: "online" });
+
+  await run("pm2", ["save"]);
+  res.json({ ok: true });
 });
 
 app.post("/stop", async (req, res) => {
@@ -231,10 +289,60 @@ app.post("/stop", async (req, res) => {
 app.post("/restart", async (req, res) => {
   const { botId } = req.body || {};
   if (!botId) return res.status(400).json({ ok: false, error: "botId required" });
-  const r = await run("pm2", ["restart", procName(botId)]);
-  if (r.code !== 0) return res.status(500).json({ ok: false, error: r.stderr });
+
+  // If PM2 process doesn't exist yet, behave like /start (register it).
+  const info = await pmInfo(botId);
+
+  const dir = botDir(botId);
+  const exists = await fs.stat(dir).then(() => true).catch(() => false);
+  if (!exists) return res.status(404).json({ ok: false, error: "Bot not deployed" });
+
+  try {
+    await ensureBotVenv(botId);
+    await pipInstallInBotVenv(botId);
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+
+  const interpreter = venvPython(botId);
+
+  if (!info) {
+    const reg = await run("pm2", [
+      "start",
+      "main.py",
+      "--name",
+      procName(botId),
+      "--interpreter",
+      interpreter,
+      "--cwd",
+      dir,
+    ]);
+
+    if (reg.code !== 0) return res.status(500).json({ ok: false, error: reg.stderr });
+  } else {
+    // Full PM2 migration safety: delete + re-register with bot venv interpreter.
+    await run("pm2", ["delete", procName(botId)]);
+
+    const reg = await run("pm2", [
+      "start",
+      "main.py",
+      "--name",
+      procName(botId),
+      "--interpreter",
+      interpreter,
+      "--cwd",
+      dir,
+    ]);
+
+    if (reg.code !== 0) return res.status(500).json({ ok: false, error: reg.stderr });
+  }
+
+  await run("pm2", ["save"]);
+
   res.json({ ok: true });
 });
+
+
 
 app.post("/delete", async (req, res) => {
   const { botId } = req.body || {};
