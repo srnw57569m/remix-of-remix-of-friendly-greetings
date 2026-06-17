@@ -337,6 +337,7 @@ function BotControlPanel() {
             expiresAt={bot.subscription_expires_at ?? null}
             setSubFn={setSubFn}
             onChange={invalidate}
+            canManage={isAdmin}
           />
 
           <PlansCard botId={botId} onChange={invalidate} />
