@@ -182,6 +182,7 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          free_trial_used: boolean
           highrise_connected_at: string | null
           highrise_id: string | null
           highrise_username: string | null
@@ -197,6 +198,7 @@ export type Database = {
         Insert: {
           created_at?: string
           email: string
+          free_trial_used?: boolean
           highrise_connected_at?: string | null
           highrise_id?: string | null
           highrise_username?: string | null
@@ -212,6 +214,7 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+          free_trial_used?: boolean
           highrise_connected_at?: string | null
           highrise_id?: string | null
           highrise_username?: string | null
@@ -293,6 +296,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_grant_bot_time: {
+        Args: { _bot_id: string; _hours: number }
+        Returns: {
+          bot_id: string
+          expires_at: string
+        }[]
+      }
       bank_deposit_by_highrise: {
         Args: { _amount: number; _highrise_id: string; _username: string }
         Returns: {
@@ -300,6 +310,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      cleanup_expired_trials: { Args: never; Returns: number }
       purchase_bot_plan: {
         Args: {
           _bot_id: string
@@ -310,6 +321,13 @@ export type Database = {
         }
         Returns: {
           balance_after: number
+          bot_id: string
+          expires_at: string
+        }[]
+      }
+      start_free_trial: {
+        Args: { _bot_id: string }
+        Returns: {
           bot_id: string
           expires_at: string
         }[]

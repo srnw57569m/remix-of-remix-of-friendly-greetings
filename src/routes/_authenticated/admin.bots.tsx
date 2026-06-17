@@ -2,11 +2,22 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Play, Square, RotateCw, Pause, Trash2, Search } from "lucide-react";
+import { Play, Square, RotateCw, Pause, Trash2, Search, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { listAllBots, adminSetBotStatus, adminDeleteBot } from "@/lib/admin.functions";
+import { adminGrantBotTime } from "@/lib/wallet.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+
 
 export const Route = createFileRoute("/_authenticated/admin/bots")({
   head: () => ({ meta: [{ title: "Admin · Bots" }] }),
@@ -39,6 +50,22 @@ function AdminBots() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const grant = useServerFn(adminGrantBotTime);
+  const [grantTarget, setGrantTarget] = useState<{ id: string; name: string } | null>(null);
+  const [grantHours, setGrantHours] = useState<number>(24);
+  const grantMut = useMutation({
+    mutationFn: (v: { botId: string; hours: number }) => grant({ data: v }),
+    onSuccess: (res) => {
+      toast.success(
+        `Time granted · expires ${new Date(res.expiresAt ?? Date.now()).toLocaleString()}`,
+      );
+      qc.invalidateQueries({ queryKey: ["admin"] });
+      setGrantTarget(null);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
 
   return (
     <div className="space-y-4">
@@ -103,6 +130,17 @@ function AdminBots() {
                     <Button
                       size="icon"
                       variant="ghost"
+                      title="Grant time"
+                      onClick={() => {
+                        setGrantHours(24);
+                        setGrantTarget({ id: b.id, name: b.bot_name });
+                      }}
+                    >
+                      <Clock className="h-4 w-4 text-violet-400" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
                       title="Delete"
                       onClick={() => {
                         if (confirm(`Permanently delete "${b.bot_name}"?`)) delMut.mutate(b.id);
@@ -117,9 +155,56 @@ function AdminBots() {
           </tbody>
         </table>
       </div>
+
+      <Dialog open={grantTarget !== null} onOpenChange={(o) => !o && setGrantTarget(null)}>
+        <DialogContent className="glass-strong border-white/10 sm:rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Grant subscription time</DialogTitle>
+            <DialogDescription>
+              Extend <span className="font-mono text-foreground">{grantTarget?.name}</span> by a custom number of hours. Bills nothing.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Hours</Label>
+            <Input
+              type="number"
+              min={1}
+              max={24 * 365 * 5}
+              value={grantHours}
+              onChange={(e) => setGrantHours(Math.max(1, Number(e.target.value) || 0))}
+              className="font-mono"
+            />
+            <div className="flex flex-wrap gap-2 text-xs">
+              {[1, 24, 24 * 7, 24 * 30, 24 * 365].map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => setGrantHours(h)}
+                  className="rounded-full border border-white/10 px-3 py-1 hover:bg-white/5"
+                >
+                  {h === 1 ? "1h" : h === 24 ? "1d" : h === 168 ? "1w" : h === 720 ? "1mo" : "1y"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setGrantTarget(null)} disabled={grantMut.isPending}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => grantTarget && grantMut.mutate({ botId: grantTarget.id, hours: grantHours })}
+              disabled={grantMut.isPending || grantHours < 1}
+              className="glow-primary"
+            >
+              {grantMut.isPending ? "Granting…" : `Grant ${grantHours}h`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
 
 function StatusPill({ status }: { status: string }) {
   const tone =

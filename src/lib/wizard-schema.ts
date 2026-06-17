@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const PLAN_CHOICES = ["trial", "hourly", "daily", "weekly", "monthly", "yearly"] as const;
+export type PlanChoice = (typeof PLAN_CHOICES)[number];
+
 export const wizardSchema = z.object({
   botToken: z.string().trim().min(1, "Bot token is required").max(500),
   roomId: z.string().trim().min(1, "Room ID is required").max(200),
@@ -37,4 +40,6 @@ export const partialWizardData = {
   icecastUsername: "source",
   icecastPassword: "",
   agreedToTerms: false,
+  plan: "" as PlanChoice | "",
 };
+
