@@ -42,8 +42,9 @@ async function call<T = unknown>(
   const url = `${base}${path}`;
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 60_000);
+  let r: Response;
   try {
-    const r = await fetch(url, {
+    r = await fetch(url, {
       method,
       headers: {
         "content-type": "application/json",
@@ -52,6 +53,13 @@ async function call<T = unknown>(
       body: body ? JSON.stringify(body) : undefined,
       signal: ctl.signal,
     });
+  } catch (e) {
+    const msg = (e as Error).message || String(e);
+    throw new Error(
+      `VPS agent unreachable at ${base} (${msg}). Check VPS_AGENT_URL and that the agent is running.`,
+    );
+  }
+
     const text = await r.text();
     let parsed: any;
     try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = { raw: text }; }
