@@ -735,7 +735,7 @@ function SubscriptionCard({
       <p className="mt-1 text-sm text-muted-foreground">
         {canManage
           ? "Toggle premium features and renewal for this bot."
-          : "View your current subscription status. Only admins can change it."}
+          : "View your current subscription status."}
       </p>
       <div className="mt-5 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4">
         <div>
