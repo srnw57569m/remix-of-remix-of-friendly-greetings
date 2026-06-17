@@ -16,20 +16,20 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
   head: () => ({
     meta: [
-      { title: "Sign in or Create an Account — SonicForge" },
+      { title: "Sign in or Create an Account — BeatlY" },
       {
         name: "description",
         content:
-          "Log in to SonicForge or create a free account to build, deploy, and manage your own Highrise music bot.",
+          "Log in to BeatlY or create a free account to build, deploy, and manage your own Highrise music bot.",
       },
-      { property: "og:title", content: "Sign in or Create an Account — SonicForge" },
+      { property: "og:title", content: "Sign in or Create an Account — BeatlY" },
       {
         property: "og:description",
         content:
           "Log in or sign up to deploy your personalized Highrise music bot in minutes.",
       },
       { property: "og:url", content: "https://weave-warm-logic.lovable.app/auth" },
-      { name: "twitter:title", content: "Sign in or Create an Account — SonicForge" },
+      { name: "twitter:title", content: "Sign in or Create an Account — BeatlY" },
       {
         name: "twitter:description",
         content:
@@ -80,7 +80,7 @@ function AuthPage() {
               <Music2 className="h-5 w-5 text-primary-foreground" />
             </div>
           </div>
-          <span className="font-display text-xl font-semibold">SonicForge</span>
+          <span className="font-display text-xl font-semibold">BeatlY</span>
         </Link>
 
         <div className="relative w-full animate-fade-up">

@@ -38,7 +38,7 @@ export function Navbar() {
               <Music2 className="h-4 w-4 text-primary-foreground" />
             </div>
           </div>
-          <span className="font-display text-lg font-semibold tracking-tight">SonicForge</span>
+          <span className="font-display text-lg font-semibold tracking-tight">BeatlY</span>
         </Link>
 
         <ul className="hidden items-center gap-1 md:flex">

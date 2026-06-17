@@ -14,8 +14,8 @@ export const Route = createFileRoute("/_authenticated/admin/plans")({
   component: AdminPlansPage,
   head: () => ({
     meta: [
-      { title: "Plan Pricing — SonicForge Admin" },
-      { name: "description", content: "Manage SonicForge subscription plan prices." },
+      { title: "Plan Pricing — BeatlY Admin" },
+      { name: "description", content: "Manage BeatlY subscription plan prices." },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

@@ -57,7 +57,7 @@ import { StatusBadge } from "@/components/dashboard/StatusBadge";
 export const Route = createFileRoute("/_authenticated/dashboard/bot/$botId")({
   head: ({ params }) => ({
     meta: [
-      { title: `Bot ${params.botId.slice(0, 8)} — SonicForge` },
+      { title: `Bot ${params.botId.slice(0, 8)} — BeatlY` },
       { name: "description", content: "Music Bot control panel." },
     ],
   }),

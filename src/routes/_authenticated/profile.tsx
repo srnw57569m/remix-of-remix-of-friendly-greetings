@@ -26,8 +26,8 @@ const ROOM_LINK = "https://high.rs/world?id=6894bd39e3e4a405517cb530";
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({
     meta: [
-      { title: "My Profile — SonicForge" },
-      { name: "description", content: "Manage your SonicForge profile and connect your Highrise account." },
+      { title: "My Profile — BeatlY" },
+      { name: "description", content: "Manage your BeatlY profile and connect your Highrise account." },
     ],
   }),
   component: ProfilePage,

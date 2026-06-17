@@ -15,7 +15,7 @@ export const Route = createFileRoute("/")({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebSite",
-          name: "SonicForge",
+          name: "BeatlY",
           url: "https://weave-warm-logic.lovable.app/",
         }),
       },
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/")({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
-          name: "SonicForge",
+          name: "BeatlY",
           url: "https://weave-warm-logic.lovable.app/",
         }),
       },
@@ -85,7 +85,7 @@ function LandingPage() {
             >
               <span className="absolute -inset-1 rounded-full bg-gradient-to-r from-primary via-accent to-primary blur-md opacity-70 group-hover:opacity-100 transition-opacity" />
               <span className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-accent" />
-              <span className="relative">Get Started Free</span>
+              <span className="relative">Get Started</span>
               <ArrowRight className="relative h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
 
@@ -107,13 +107,13 @@ function LandingPage() {
                 <span className="h-2.5 w-2.5 rounded-full bg-accent/70" />
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {["#general", "#lounge", "#focus"].map((c, i) => (
+                {["#vibes", "#lounge", "#focus"].map((c, i) => (
                   <div key={c} className="glass rounded-2xl p-4 text-left">
-                    <div className="text-xs text-muted-foreground">Channel</div>
+                    <div className="text-xs text-muted-foreground">{i === 0 ? "Room 1" : i === 1 ? "Room 2" : "Room 3"}</div>
                     <div className="mt-1 font-medium">{c}</div>
                     <div className="mt-3 flex items-center gap-2 text-xs text-accent">
                       <span className="h-1.5 w-1.5 animate-glow-pulse rounded-full bg-accent" />
-                      Now playing #{i + 1}
+                      {i === 2 ? "ONline" : "Online"}
                     </div>
                   </div>
                 ))}
@@ -175,7 +175,7 @@ function LandingPage() {
               >
                 <span className="absolute -inset-1 rounded-full bg-gradient-to-r from-primary to-accent blur-md opacity-70 group-hover:opacity-100" />
                 <span className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-accent" />
-                <span className="relative">Get Started Free</span>
+                <span className="relative">Get Started</span>
                 <ArrowRight className="relative h-5 w-5" />
               </Link>
             </div>
@@ -184,7 +184,7 @@ function LandingPage() {
       </section>
 
       <footer className="border-t border-white/5 py-10 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} SonicForge — Forge sound. Power servers.
+        © {new Date().getFullYear()} BeatlY — Premium sound. Power servers.
       </footer>
     </main>
   );
