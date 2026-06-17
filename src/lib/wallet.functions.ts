@@ -4,13 +4,17 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type PlanDuration = "hourly" | "daily" | "weekly" | "monthly" | "yearly";
 
-export const PLAN_CATALOG: Record<PlanDuration, { price: number; label: string; intervalSql: string }> = {
-  hourly:  { price: 50,    label: "1 Hour",   intervalSql: "1 hour" },
-  daily:   { price: 500,   label: "1 Day",    intervalSql: "1 day" },
-  weekly:  { price: 2500,  label: "1 Week",   intervalSql: "7 days" },
-  monthly: { price: 8000,  label: "1 Month",  intervalSql: "30 days" },
-  yearly:  { price: 80000, label: "1 Year",   intervalSql: "365 days" },
-};
+export const PLAN_ORDER: PlanDuration[] = ["hourly", "daily", "weekly", "monthly", "yearly"];
+
+export const listPlans = createServerFn({ method: "GET" }).handler(async () => {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("plan_prices")
+    .select("duration, label, price, interval_sql, sort_order, updated_at")
+    .order("sort_order", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+});
 
 export const getWallet = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -44,19 +48,26 @@ export const purchaseBotPlan = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { userId } = context;
-    const plan = PLAN_CATALOG[data.duration];
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: plan, error: planErr } = await supabaseAdmin
+      .from("plan_prices")
+      .select("price, interval_sql")
+      .eq("duration", data.duration)
+      .maybeSingle();
+    if (planErr) throw new Error(planErr.message);
+    if (!plan) throw new Error("Plan not found");
+
     const { data: result, error } = await supabaseAdmin.rpc("purchase_bot_plan", {
       _user_id: userId,
       _bot_id: data.botId,
       _duration: data.duration,
       _price: plan.price,
-      _interval: plan.intervalSql,
+      _interval: plan.interval_sql,
     });
     if (error) throw new Error(error.message);
     const row = Array.isArray(result) ? result[0] : result;
 
-    // Best-effort: start the bot on the VPS once paid
     try {
       const { agent, isAgentConfigured, buildBotConfig } = await import("./vps-agent.server");
       if (isAgentConfigured()) {
@@ -92,4 +103,46 @@ export const purchaseBotPlan = createServerFn({ method: "POST" })
       expiresAt: row?.expires_at ?? null,
       balanceAfter: row?.balance_after ?? 0,
     };
+  });
+
+export const updatePlanPrice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      duration: z.enum(["hourly", "daily", "weekly", "monthly", "yearly"]),
+      price: z.coerce.number().int().min(0).max(10_000_000),
+      label: z.string().trim().min(1).max(64).optional(),
+      interval_sql: z.string().trim().min(2).max(64).optional(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .in("role", ["admin", "super_admin"]);
+    if (!roles || roles.length === 0) throw new Error("Forbidden: admin role required");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const patch = {
+      price: data.price,
+      updated_at: new Date().toISOString(),
+      updated_by: userId,
+      ...(data.label ? { label: data.label } : {}),
+      ...(data.interval_sql ? { interval_sql: data.interval_sql } : {}),
+    };
+
+    const { error } = await supabaseAdmin
+      .from("plan_prices")
+      .update(patch)
+      .eq("duration", data.duration);
+    if (error) throw new Error(error.message);
+
+    await supabaseAdmin.from("activity_logs").insert({
+      user_id: userId,
+      action: "admin_update_plan_price",
+      detail: `${data.duration} -> ${data.price}g`,
+    });
+    return { ok: true };
   });

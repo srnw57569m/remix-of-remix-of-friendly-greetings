@@ -148,6 +148,36 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_prices: {
+        Row: {
+          duration: string
+          interval_sql: string
+          label: string
+          price: number
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          duration: string
+          interval_sql: string
+          label: string
+          price: number
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          duration?: string
+          interval_sql?: string
+          label?: string
+          price?: number
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
