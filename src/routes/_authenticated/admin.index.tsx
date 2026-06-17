@@ -7,7 +7,7 @@ import { getPlatformStats } from "@/lib/admin.functions";
 import { StatCard } from "@/components/dashboard/StatCard";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
-  head: () => ({ meta: [{ title: "Admin Overview — SonicForge" }] }),
+  head: () => ({ meta: [{ title: "Admin Overview — BeatlY" }] }),
   component: AdminOverview,
 });
 

@@ -34,7 +34,7 @@ import { CreateBotWizard } from "@/components/wizard/CreateBotWizard";
 export const Route = createFileRoute("/_authenticated/dashboard/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — SonicForge" },
+      { title: "Dashboard — BeatlY" },
       {
         name: "description",
         content: "Manage all your Music Bots from one premium control center.",
