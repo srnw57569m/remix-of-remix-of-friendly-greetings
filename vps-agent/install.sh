@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 # SonicForge VPS Agent — one-shot installer for Ubuntu 22.04 / 24.04 / Debian 12
 #
 # Usage (run on the VPS as root):
@@ -27,15 +28,8 @@ INSTALL_DIR="/opt/sonicforge-agent"
 
 echo "==> Installing system packages…"
 apt-get update -y
-apt-get install -y curl git ffmpeg python3 python3-pip python3-venv build-essential ca-certificates software-properties-common
+apt-get install -y curl git ffmpeg python3 python3-pip python3-venv python3.11 python3.11-venv build-essential ca-certificates
 
-echo "==> Ensuring Python 3.11 is available…"
-if ! command -v python3.11 >/dev/null 2>&1; then
-  add-apt-repository -y ppa:deadsnakes/ppa || true
-  apt-get update -y
-  apt-get install -y python3.11 python3.11-venv python3.11-dev || \
-    echo "WARNING: could not install python3.11 from apt; ensure it is installed manually."
-fi
 
 echo "==> Installing Node.js 20…"
 if ! command -v node >/dev/null 2>&1; then
@@ -74,7 +68,9 @@ AGENT_SECRET=$AGENT_SECRET
 BOT_REPO_URL=$BOT_REPO_URL
 PORT=$PORT
 BOTS_DIR=$INSTALL_DIR/bots
-PYTHON=python3.11
+PYTHON=python3
+PYTHON_311=python3.11
+
 EOF
 chmod 600 "$INSTALL_DIR/.env"
 mkdir -p "$INSTALL_DIR/bots"
