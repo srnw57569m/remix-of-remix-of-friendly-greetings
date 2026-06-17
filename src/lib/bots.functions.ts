@@ -491,7 +491,7 @@ async function listUserBotFiles(admin: AdminClient, prefix: string): Promise<str
   return out;
 }
 
-async function patchConfigInStorage(storagePath: string, patch: PartialBotPatch) {
+async function patchConfigInStorage(storagePath: string, patch: PartialBotPatch, botId?: string) {
   if (Object.values(patch).every((v) => v === undefined)) return;
   const admin = await loadAdmin();
   const cfgPath = storagePath + "/config.json";
@@ -506,7 +506,7 @@ async function patchConfigInStorage(storagePath: string, patch: PartialBotPatch)
     throw new Error("Cannot read config.json: " + dlErr.message);
   }
   if (patch.admins !== undefined) {
-    await patchMusicbotPosAdmins(storagePath, patch.admins);
+    await patchMusicbotPosAdmins(storagePath, patch.admins, botId);
   }
 }
 
