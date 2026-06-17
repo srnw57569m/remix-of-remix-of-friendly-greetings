@@ -246,20 +246,27 @@ export function CreateBotWizard({
                   Next <ChevronRight className="size-4" />
                 </Button>
               ) : (
-                <Button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={submitting || !validateStep(3) || !validateStep(4)}
-                  className="gap-2 glow-primary"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" /> Creating…
-                    </>
-                  ) : (
-                    "Create Bot"
+                <div className="flex flex-col items-end gap-2">
+                  {!canAfford && form.plan && (
+                    <p className="text-xs text-rose-300">
+                      Insufficient gold credits for the selected plan.
+                    </p>
                   )}
-                </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={submitting || !validateStep(3) || !validateStep(4) || !canAfford}
+                    className="gap-2 glow-primary"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" /> Creating…
+                      </>
+                    ) : (
+                      "Create Bot"
+                    )}
+                  </Button>
+                </div>
               )}
             </div>
           </div>
