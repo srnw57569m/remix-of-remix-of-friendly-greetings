@@ -1,0 +1,9 @@
+# SonicForge
+
+> Build, deploy, and manage your own Highrise music bot in minutes — no coding required.
+
+SonicForge is a hosted platform that lets users spin up custom music bots for the Highrise virtual world. Users connect their Highrise account, configure their Icecast radio stream, and deploy a fully managed bot through a guided wizard.
+
+## Pages
+- [Home](/): Product overview, features, and pricing teaser.
+- [Sign in / Sign up](/auth): Create an account or log in.

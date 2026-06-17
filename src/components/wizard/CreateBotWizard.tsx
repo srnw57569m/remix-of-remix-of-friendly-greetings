@@ -130,7 +130,7 @@ export function CreateBotWizard({
               <button
                 onClick={() => close(false)}
                 className="rounded-full p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                aria-label="Close"
+                aria-label="Close wizard"
               >
                 <X className="size-4" />
               </button>
