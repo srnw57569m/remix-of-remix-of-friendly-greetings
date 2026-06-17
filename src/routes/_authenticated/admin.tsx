@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { LayoutDashboard, Users, Bot, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Users, Bot, ShieldAlert, Coins } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   beforeLoad: async () => {
@@ -25,6 +25,7 @@ function AdminLayout() {
     { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
     { to: "/admin/users", label: "Users", icon: Users, exact: false },
     { to: "/admin/bots", label: "Bots", icon: Bot, exact: false },
+    { to: "/admin/plans", label: "Plans", icon: Coins, exact: false },
   ];
   return (
     <div className="relative min-h-screen pt-28 pb-24">
