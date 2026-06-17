@@ -51,6 +51,22 @@ function AdminBots() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const grant = useServerFn(adminGrantBotTime);
+  const [grantTarget, setGrantTarget] = useState<{ id: string; name: string } | null>(null);
+  const [grantHours, setGrantHours] = useState<number>(24);
+  const grantMut = useMutation({
+    mutationFn: (v: { botId: string; hours: number }) => grant({ data: v }),
+    onSuccess: (res) => {
+      toast.success(
+        `Time granted · expires ${new Date(res.expiresAt ?? Date.now()).toLocaleString()}`,
+      );
+      qc.invalidateQueries({ queryKey: ["admin"] });
+      setGrantTarget(null);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+
   return (
     <div className="space-y-4">
       <div className="glass flex items-center gap-3 rounded-2xl px-4 py-3">
