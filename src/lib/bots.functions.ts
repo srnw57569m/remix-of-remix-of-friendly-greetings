@@ -510,7 +510,7 @@ async function patchConfigInStorage(storagePath: string, patch: PartialBotPatch)
   }
 }
 
-async function patchMusicbotPosAdmins(storagePath: string, admins: string[]) {
+async function patchMusicbotPosAdmins(storagePath: string, admins: string[], botId?: string) {
   const admin = await loadAdmin();
   const posPath = storagePath + "/musicbot_pos.json";
   let current: Record<string, unknown> = {
@@ -528,9 +528,18 @@ async function patchMusicbotPosAdmins(storagePath: string, admins: string[]) {
     } catch { /* keep defaults */ }
   }
   current.admins = admins;
+  const serialized = JSON.stringify(current, null, 2);
   const { error: upErr } = await admin.storage.from(USER_BUCKET)
-    .upload(posPath, JSON.stringify(current, null, 2), { upsert: true, contentType: "application/json" });
+    .upload(posPath, serialized, { upsert: true, contentType: "application/json" });
   if (upErr) throw new Error("Cannot write musicbot_pos.json: " + upErr.message);
+  if (botId) {
+    try {
+      const { agent, isAgentConfigured } = await loadAgent();
+      if (isAgentConfigured()) {
+        await agent.updateFile(botId, "musicbot_pos.json", serialized);
+      }
+    } catch { /* best-effort: VPS may not expose /file endpoint yet */ }
+  }
 }
 
 // ============================================================
