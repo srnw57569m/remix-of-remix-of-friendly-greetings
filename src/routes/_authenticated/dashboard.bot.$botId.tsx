@@ -69,6 +69,7 @@ function BotControlPanel() {
   const { botId } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { isAdmin } = useAuth();
 
   const getBotFn = useServerFn(getBot);
   const setStatusFn = useServerFn(setBotStatus);
