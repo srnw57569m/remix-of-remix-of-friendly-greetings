@@ -321,7 +321,7 @@ export const setBotStatus = createServerFn({ method: "POST" })
       supabase, userId, data.botId, "bot_" + data.action,
       agentError ? `agent error: ${agentError}` : undefined,
     );
-    if (agentError) throw new Error(agentError);
+    if (agentError) return { ...(updated ?? {}), agentError } as typeof updated & { agentError?: string };
     return updated;
   });
 
