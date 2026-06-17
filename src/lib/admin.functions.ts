@@ -49,7 +49,7 @@ export const listAllUsers = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let q = supabaseAdmin
       .from("profiles")
-      .select("id, username, email, created_at, suspended")
+      .select("id, username, email, created_at, suspended, highrise_username")
       .order("created_at", { ascending: false })
       .limit(500);
     if (data.search) q = q.or(`username.ilike.%${data.search}%,email.ilike.%${data.search}%`);
