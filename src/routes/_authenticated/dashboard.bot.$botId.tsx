@@ -51,6 +51,7 @@ import {
   setSubscription,
   updateBotConfig,
 } from "@/lib/bots.functions";
+import { getWallet, purchaseBotPlan, PLAN_CATALOG, type PlanDuration } from "@/lib/wallet.functions";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 
 export const Route = createFileRoute("/_authenticated/dashboard/bot/$botId")({
@@ -335,6 +336,8 @@ function BotControlPanel() {
             setSubFn={setSubFn}
             onChange={invalidate}
           />
+
+          <PlansCard botId={botId} onChange={invalidate} />
         </div>
 
         {/* Activity */}
