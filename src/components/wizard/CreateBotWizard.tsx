@@ -44,7 +44,27 @@ export function CreateBotWizard({
   const deleteBotFn = useServerFn(deleteBot);
   const purchaseFn = useServerFn(purchaseBotPlan);
   const trialFn = useServerFn(startFreeTrial);
+  const listPlansFn = useServerFn(listPlans);
+  const walletFn = useServerFn(getWallet);
+  const trialStatusFn = useServerFn(getTrialStatus);
   const qc = useQueryClient();
+
+  const { data: plans = [] } = useQuery({ queryKey: ["plans"], queryFn: () => listPlansFn() });
+  const { data: wallet } = useQuery({ queryKey: ["wallet-summary"], queryFn: () => walletFn() });
+  const { data: trial } = useQuery({ queryKey: ["trial-status"], queryFn: () => trialStatusFn() });
+
+  const balance = wallet?.balance ?? 0;
+  const trialUsed = trial?.freeTrialUsed ?? false;
+
+  const selectedPlanPrice =
+    form.plan && form.plan !== "trial"
+      ? (plans as any[]).find((p) => p.duration === form.plan)?.price ?? 0
+      : 0;
+
+  const canAfford =
+    form.plan === "trial"
+      ? !trialUsed
+      : form.plan !== "" && balance >= selectedPlanPrice;
 
   const reset = () => {
     setStep(0);
