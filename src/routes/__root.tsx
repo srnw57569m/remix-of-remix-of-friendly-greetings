@@ -7,6 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { Heart } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "sonner";
 
