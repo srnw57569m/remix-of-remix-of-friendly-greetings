@@ -6,8 +6,8 @@ export const getMyProfile = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("profiles")
-      .select("id, user_id, username, email, highrise_username, highrise_connected_at, created_at")
-      .eq("user_id", context.userId)
+      .select("id, user_id, username, email, highrise_username, highrise_id, highrise_connected_at, created_at")
+      .eq("id", context.userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     return data;
@@ -15,7 +15,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
 
 export const connectHighrise = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { code: string }) => ({ code: String(d.code ?? "").trim() }))
+  .inputValidator((d: { code: string }) => ({ code: String(d.code ?? "").trim().toUpperCase() }))
   .handler(async ({ data, context }) => {
     if (!data.code) throw new Error("Code is required");
 
@@ -33,15 +33,18 @@ export const connectHighrise = createServerFn({ method: "POST" })
 
     const now = new Date().toISOString();
 
-    const { error: profErr } = await supabaseAdmin
+    const { data: updated, error: profErr } = await supabaseAdmin
       .from("profiles")
       .update({
         highrise_username: codeRow.highrise_username,
         highrise_id: codeRow.highrise_id,
         highrise_connected_at: now,
       })
-      .eq("user_id", context.userId);
+      .eq("id", context.userId)
+      .select("id")
+      .maybeSingle();
     if (profErr) throw new Error(profErr.message);
+    if (!updated) throw new Error("Profile not found for current user.");
 
     const { error: useErr } = await supabaseAdmin
       .from("highrise_codes")
@@ -59,7 +62,7 @@ export const disconnectHighrise = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin
       .from("profiles")
       .update({ highrise_username: null, highrise_id: null, highrise_connected_at: null })
-      .eq("user_id", context.userId);
+      .eq("id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
