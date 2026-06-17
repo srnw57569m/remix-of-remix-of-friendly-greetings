@@ -14,183 +14,16 @@ export type Database = {
   }
   public: {
     Tables: {
-      activity_logs: {
-        Row: {
-          action: string
-          bot_id: string | null
-          created_at: string
-          detail: string | null
-          id: string
-          user_id: string
-        }
-        Insert: {
-          action: string
-          bot_id?: string | null
-          created_at?: string
-          detail?: string | null
-          id?: string
-          user_id: string
-        }
-        Update: {
-          action?: string
-          bot_id?: string | null
-          created_at?: string
-          detail?: string | null
-          id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "activity_logs_bot_id_fkey"
-            columns: ["bot_id"]
-            isOneToOne: false
-            referencedRelation: "bots"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      bots: {
-        Row: {
-          admins: Json
-          bot_index: number
-          bot_name: string
-          bot_token: string
-          created_at: string
-          icecast_password: string
-          icecast_port: number
-          icecast_server: string
-          icecast_username: string
-          id: string
-          last_restart_at: string | null
-          mount_point: string
-          owner_username: string
-          room_id: string
-          status: string
-          storage_path: string
-          subscription_expires_at: string | null
-          subscription_status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          admins?: Json
-          bot_index: number
-          bot_name: string
-          bot_token: string
-          created_at?: string
-          icecast_password: string
-          icecast_port: number
-          icecast_server: string
-          icecast_username: string
-          id?: string
-          last_restart_at?: string | null
-          mount_point: string
-          owner_username: string
-          room_id: string
-          status?: string
-          storage_path: string
-          subscription_expires_at?: string | null
-          subscription_status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          admins?: Json
-          bot_index?: number
-          bot_name?: string
-          bot_token?: string
-          created_at?: string
-          icecast_password?: string
-          icecast_port?: number
-          icecast_server?: string
-          icecast_username?: string
-          id?: string
-          last_restart_at?: string | null
-          mount_point?: string
-          owner_username?: string
-          room_id?: string
-          status?: string
-          storage_path?: string
-          subscription_expires_at?: string | null
-          subscription_status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          suspended: boolean
-          suspended_at: string | null
-          suspended_reason: string | null
-          updated_at: string
-          user_id: string
-          username: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id: string
-          suspended?: boolean
-          suspended_at?: string | null
-          suspended_reason?: string | null
-          updated_at?: string
-          user_id?: string
-          username: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          suspended?: boolean
-          suspended_at?: string | null
-          suspended_reason?: string | null
-          updated_at?: string
-          user_id?: string
-          username?: string
-        }
-        Relationships: []
-      }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      [_ in never]: never
     }
     Enums: {
-      app_role: "user" | "moderator" | "admin" | "super_admin"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -317,8 +150,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["user", "moderator", "admin", "super_admin"],
-    },
+    Enums: {},
   },
 } as const
