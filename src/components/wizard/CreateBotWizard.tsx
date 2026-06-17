@@ -41,6 +41,7 @@ export function CreateBotWizard({
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<CreatedBot | null>(null);
   const createBotFn = useServerFn(createBot);
+  const deleteBotFn = useServerFn(deleteBot);
   const purchaseFn = useServerFn(purchaseBotPlan);
   const trialFn = useServerFn(startFreeTrial);
   const qc = useQueryClient();
