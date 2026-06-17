@@ -23,7 +23,7 @@ export const connectHighrise = createServerFn({ method: "POST" })
 
     const { data: codeRow, error: codeErr } = await supabaseAdmin
       .from("highrise_codes")
-      .select("code, highrise_username, used_at")
+      .select("code, highrise_username, highrise_id, used_at")
       .eq("code", data.code)
       .maybeSingle();
 
@@ -37,6 +37,7 @@ export const connectHighrise = createServerFn({ method: "POST" })
       .from("profiles")
       .update({
         highrise_username: codeRow.highrise_username,
+        highrise_id: codeRow.highrise_id,
         highrise_connected_at: now,
       })
       .eq("user_id", context.userId);
