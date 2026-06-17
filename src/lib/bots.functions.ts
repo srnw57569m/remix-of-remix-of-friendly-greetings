@@ -496,12 +496,15 @@ async function patchConfigInStorage(storagePath: string, patch: PartialBotPatch)
   const admin = await loadAdmin();
   const cfgPath = storagePath + "/config.json";
   const { data: blob, error: dlErr } = await admin.storage.from(USER_BUCKET).download(cfgPath);
-  if (dlErr || !blob) throw new Error("Cannot read config.json: " + (dlErr?.message ?? "missing"));
-  const text = await blob.text();
-  const next = patchConfigJson(text, patch);
-  const { error: upErr } = await admin.storage.from(USER_BUCKET)
-    .upload(cfgPath, next, { upsert: true, contentType: "application/json" });
-  if (upErr) throw new Error("Cannot write config.json: " + upErr.message);
+  if (blob) {
+    const text = await blob.text();
+    const next = patchConfigJson(text, patch);
+    const { error: upErr } = await admin.storage.from(USER_BUCKET)
+      .upload(cfgPath, next, { upsert: true, contentType: "application/json" });
+    if (upErr) throw new Error("Cannot write config.json: " + upErr.message);
+  } else if (dlErr && !/not.?found|not.?exist/i.test(dlErr.message)) {
+    throw new Error("Cannot read config.json: " + dlErr.message);
+  }
   if (patch.admins !== undefined) {
     await patchMusicbotPosAdmins(storagePath, patch.admins);
   }
