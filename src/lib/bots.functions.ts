@@ -1,0 +1,598 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { TablesUpdate } from "@/integrations/supabase/types";
+import { wizardSchema, type WizardData } from "./wizard-schema";
+import {
+  injectConfigJson,
+  patchConfigJson,
+  type InjectionConfig,
+  type PartialBotPatch,
+} from "./bot-template";
+
+const TEMPLATE_BUCKET = "bot-templates";
+const TEMPLATE_PREFIX: string = ""; // files live at the root of the bot-templates bucket
+const USER_BUCKET = "user-bots";
+
+type AdminClient = Awaited<ReturnType<typeof loadAdmin>>;
+
+async function loadAdmin() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
+}
+
+/** Lazy-load the VPS agent client (server-only module). */
+async function loadAgent() {
+  return await import("./vps-agent.server");
+}
+
+async function listTemplateFiles(admin: AdminClient, prefix: string): Promise<string[]> {
+  const results: string[] = [];
+  const queue: string[] = [prefix];
+  while (queue.length) {
+    const dir = queue.shift()!;
+    const { data, error } = await admin.storage.from(TEMPLATE_BUCKET).list(dir, {
+      limit: 1000,
+      sortBy: { column: "name", order: "asc" },
+    });
+    if (error) throw new Error(`Failed to list template: ${error.message}`);
+    if (!data) continue;
+    for (const entry of data) {
+      const fullPath = dir ? `${dir}/${entry.name}` : entry.name;
+      // Folders have id === null in Supabase storage listings
+      if (entry.id === null) {
+        queue.push(fullPath);
+      } else {
+        results.push(fullPath);
+      }
+    }
+  }
+  return results;
+}
+
+export const createBot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => wizardSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const wizard = data as WizardData;
+
+    // 1) Determine next bot_index
+    const { data: existing, error: idxErr } = await supabase
+      .from("bots")
+      .select("bot_index")
+      .eq("user_id", userId)
+      .order("bot_index", { ascending: false })
+      .limit(1);
+    if (idxErr) throw new Error(`Database error: ${idxErr.message}`);
+    const nextIndex = ((existing?.[0]?.bot_index as number | undefined) ?? 0) + 1;
+    const botName = `MusicBot${nextIndex}`;
+    const storagePath = `${userId}/${botName}`;
+
+    // 2) Load template from storage (legacy path). When the VPS agent is
+    //    configured, it does a fresh `git clone` of BOT_REPO_URL on the VPS,
+    //    so the storage copy is optional.
+    const { isAgentConfigured: agentConfiguredCheck } = await loadAgent();
+    const agentReady = agentConfiguredCheck();
+
+    const admin = await loadAdmin();
+    const templateFiles = agentReady
+      ? []
+      : await listTemplateFiles(admin, TEMPLATE_PREFIX);
+    if (!agentReady && templateFiles.length === 0) {
+      throw new Error(
+        "Bot template has not been uploaded yet. Please contact the administrator.",
+      );
+    }
+
+    const cfg: InjectionConfig = {
+      botToken: wizard.botToken,
+      roomId: wizard.roomId,
+      ownerUsername: wizard.ownerUsername,
+      icecastServer: wizard.icecastServer,
+      icecastPort: wizard.icecastPort,
+      mountPoint: wizard.mountPoint,
+      icecastUsername: wizard.icecastUsername,
+      icecastPassword: wizard.icecastPassword,
+    };
+
+    // 3) Copy every template file to the user's folder, injecting wizard
+    //    values into config.json only. Skipped when the VPS agent is in
+    //    charge of provisioning.
+    for (const srcPath of templateFiles) {
+      const relPath = TEMPLATE_PREFIX
+        ? srcPath.slice(TEMPLATE_PREFIX.length + 1)
+        : srcPath;
+      const destPath = `${storagePath}/${relPath}`;
+
+      const { data: blob, error: dlErr } = await admin.storage
+        .from(TEMPLATE_BUCKET)
+        .download(srcPath);
+      if (dlErr || !blob) throw new Error(`Failed to read template ${srcPath}: ${dlErr?.message}`);
+
+      let body: Blob | string = blob;
+      let contentType: string = blob.type || "application/octet-stream";
+      const baseName = relPath.split("/").pop() ?? "";
+
+      if (baseName === "config.json") {
+        const text = await blob.text();
+        body = injectConfigJson(text, cfg);
+        contentType = "application/json";
+      }
+
+      const { error: upErr } = await admin.storage
+        .from(USER_BUCKET)
+        .upload(destPath, body, { upsert: true, contentType });
+      if (upErr) throw new Error(`Failed to write ${destPath}: ${upErr.message}`);
+    }
+
+
+    // 4) Insert bot row
+    const { data: bot, error: insErr } = await supabase
+      .from("bots")
+      .insert({
+        user_id: userId,
+        bot_name: botName,
+        bot_index: nextIndex,
+        bot_token: wizard.botToken,
+        room_id: wizard.roomId,
+        owner_username: wizard.ownerUsername,
+        icecast_server: wizard.icecastServer,
+        icecast_port: wizard.icecastPort,
+        mount_point: wizard.mountPoint,
+        icecast_username: wizard.icecastUsername,
+        icecast_password: wizard.icecastPassword,
+        status: "Created",
+        storage_path: storagePath,
+      })
+      .select("id, bot_name, status, created_at, storage_path")
+      .single();
+    if (insErr) throw new Error(`Database error: ${insErr.message}`);
+
+    // 5) Try to deploy to the VPS agent (best-effort — preview works without it)
+    const { agent, isAgentConfigured, buildBotConfig } = await loadAgent();
+    let deployed = false;
+    let deployError: string | null = null;
+    if (isAgentConfigured()) {
+      try {
+        await agent.deploy(
+          bot.id,
+          buildBotConfig({
+            bot_token: wizard.botToken,
+            room_id: wizard.roomId,
+            owner_username: wizard.ownerUsername,
+            icecast_server: wizard.icecastServer,
+            icecast_port: wizard.icecastPort,
+            mount_point: wizard.mountPoint,
+            icecast_username: wizard.icecastUsername,
+            icecast_password: wizard.icecastPassword,
+            admins: [],
+          }),
+        );
+        deployed = true;
+        await supabase.from("bots").update({ status: "Offline" }).eq("id", bot.id);
+      } catch (e) {
+        deployError = (e as Error).message;
+      }
+    }
+
+    return { ...bot, deployed, deployError };
+  });
+
+// ============================================================
+//                  BOT MANAGEMENT SERVER FNS
+// ============================================================
+
+const idInput = z.object({ botId: z.string().uuid() });
+
+async function logActivity(
+  supabase: any,
+  userId: string,
+  botId: string | null,
+  action: string,
+  detail?: string,
+) {
+  await supabase.from("activity_logs").insert({
+    user_id: userId,
+    bot_id: botId,
+    action,
+    detail: detail ?? null,
+  });
+}
+
+export const listBots = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("bots")
+      .select(
+        "id, bot_name, bot_index, status, owner_username, created_at, updated_at, last_restart_at, subscription_status, subscription_expires_at, admins, icecast_server, icecast_port, mount_point, icecast_username, room_id, storage_path",
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+export const getBot = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => idInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: bot, error } = await supabase
+      .from("bots")
+      .select("*")
+      .eq("id", data.botId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!bot) throw new Error("Bot not found");
+    return bot;
+  });
+
+export const listActivity = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      botId: z.string().uuid().optional(),
+      limit: z.number().int().min(1).max(200).default(50),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    let q = supabase
+      .from("activity_logs")
+      .select("id, action, detail, created_at, bot_id")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(data.limit);
+    if (data.botId) q = q.eq("bot_id", data.botId);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+export const setBotStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      botId: z.string().uuid(),
+      action: z.enum(["start", "stop", "restart"]),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    // Verify ownership first
+    const { data: owned, error: ownErr } = await supabase
+      .from("bots").select("id").eq("id", data.botId).eq("user_id", userId).maybeSingle();
+    if (ownErr) throw new Error(ownErr.message);
+    if (!owned) throw new Error("Bot not found");
+
+    // Call the VPS agent if configured
+    const { agent, isAgentConfigured, buildBotConfig } = await loadAgent();
+    let agentError: string | null = null;
+    if (isAgentConfigured()) {
+      const runAction = async () => {
+        if (data.action === "start") await agent.start(data.botId);
+        else if (data.action === "stop") await agent.stop(data.botId);
+        else await agent.restart(data.botId);
+      };
+      try {
+        await runAction();
+      } catch (e) {
+        const msg = (e as Error).message || "";
+        // Bot exists in our DB but was never deployed to the VPS
+        // (e.g. created before the agent was reachable). Deploy then retry.
+        if (data.action !== "stop" && /not deployed/i.test(msg)) {
+          try {
+            const { data: full } = await supabase
+              .from("bots").select("*").eq("id", data.botId).eq("user_id", userId).single();
+            if (full) {
+              await agent.deploy(full.id, buildBotConfig({
+                ...full,
+                admins: Array.isArray(full.admins) ? (full.admins as string[]) : [],
+              }));
+              await runAction();
+            } else {
+              agentError = msg;
+            }
+          } catch (e2) {
+            agentError = (e2 as Error).message;
+          }
+        } else {
+          agentError = msg;
+        }
+      }
+    }
+
+    const nextStatus = data.action === "stop" ? "Offline" : "Online";
+    const patch: TablesUpdate<"bots"> = { status: nextStatus };
+    if (data.action === "restart" || data.action === "start") {
+      patch.last_restart_at = new Date().toISOString();
+    }
+    const { data: updated, error } = await supabase
+      .from("bots").update(patch)
+      .eq("id", data.botId).eq("user_id", userId)
+      .select("id, status, last_restart_at").maybeSingle();
+    if (error) throw new Error(error.message);
+    await logActivity(
+      supabase, userId, data.botId, "bot_" + data.action,
+      agentError ? `agent error: ${agentError}` : undefined,
+    );
+    if (agentError) throw new Error(agentError);
+    return updated;
+  });
+
+const configPatchInput = z.object({
+  botId: z.string().uuid(),
+  ownerUsername: z.string().trim().min(1).max(200).optional(),
+  icecastServer: z.string().trim().min(1).max(255).optional(),
+  icecastPort: z.coerce.number().int().min(1).max(65535).optional(),
+  mountPoint: z.string().trim().min(1).max(255).optional(),
+  icecastUsername: z.string().trim().min(1).max(200).optional(),
+  icecastPassword: z.string().min(1).max(500).optional(),
+});
+
+export const updateBotConfig = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => configPatchInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: bot, error: loadErr } = await supabase
+      .from("bots")
+      .select("id, user_id, storage_path, admins")
+      .eq("id", data.botId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (loadErr) throw new Error(loadErr.message);
+    if (!bot) throw new Error("Bot not found");
+
+    const dbPatch: TablesUpdate<"bots"> = {};
+    if (data.ownerUsername !== undefined) dbPatch.owner_username = data.ownerUsername;
+    if (data.icecastServer !== undefined) dbPatch.icecast_server = data.icecastServer;
+    if (data.icecastPort !== undefined) dbPatch.icecast_port = data.icecastPort;
+    if (data.mountPoint !== undefined) dbPatch.mount_point = data.mountPoint;
+    if (data.icecastUsername !== undefined) dbPatch.icecast_username = data.icecastUsername;
+    if (data.icecastPassword !== undefined) dbPatch.icecast_password = data.icecastPassword;
+    if (Object.keys(dbPatch).length > 0) {
+      const { error } = await supabase.from("bots").update(dbPatch)
+        .eq("id", data.botId).eq("user_id", userId);
+      if (error) throw new Error(error.message);
+    }
+
+    await patchConfigInStorage(bot.storage_path, {
+      ownerUsername: data.ownerUsername,
+      icecastServer: data.icecastServer,
+      icecastPort: data.icecastPort,
+      mountPoint: data.mountPoint,
+      icecastUsername: data.icecastUsername,
+      icecastPassword: data.icecastPassword,
+    });
+    await logActivity(supabase, userId, data.botId, "config_updated");
+    return { ok: true as const };
+  });
+
+const adminInput = z.object({
+  botId: z.string().uuid(),
+  username: z.string().trim().min(1).max(64),
+});
+
+export const addBotAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => adminInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: bot, error: loadErr } = await supabase.from("bots")
+      .select("id, admins, storage_path").eq("id", data.botId).eq("user_id", userId).maybeSingle();
+    if (loadErr) throw new Error(loadErr.message);
+    if (!bot) throw new Error("Bot not found");
+    const current = Array.isArray(bot.admins) ? (bot.admins as string[]) : [];
+    if (current.includes(data.username)) return { admins: current };
+    const admins = [...current, data.username];
+    const { error: upErr } = await supabase.from("bots").update({ admins })
+      .eq("id", data.botId).eq("user_id", userId);
+    if (upErr) throw new Error(upErr.message);
+    await patchConfigInStorage(bot.storage_path, { admins });
+    await logActivity(supabase, userId, data.botId, "admin_added", data.username);
+    return { admins };
+  });
+
+export const removeBotAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => adminInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: bot, error: loadErr } = await supabase.from("bots")
+      .select("id, admins, storage_path").eq("id", data.botId).eq("user_id", userId).maybeSingle();
+    if (loadErr) throw new Error(loadErr.message);
+    if (!bot) throw new Error("Bot not found");
+    const current = Array.isArray(bot.admins) ? (bot.admins as string[]) : [];
+    const admins = current.filter((u) => u !== data.username);
+    const { error: upErr } = await supabase.from("bots").update({ admins })
+      .eq("id", data.botId).eq("user_id", userId);
+    if (upErr) throw new Error(upErr.message);
+    await patchConfigInStorage(bot.storage_path, { admins });
+    await logActivity(supabase, userId, data.botId, "admin_removed", data.username);
+    return { admins };
+  });
+
+export const setSubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      botId: z.string().uuid(),
+      action: z.enum(["activate", "disable"]),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const patch = data.action === "activate"
+      ? {
+          subscription_status: "Active",
+          subscription_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        }
+      : { subscription_status: "Disabled", subscription_expires_at: null };
+    const { data: updated, error } = await supabase.from("bots").update(patch)
+      .eq("id", data.botId).eq("user_id", userId)
+      .select("subscription_status, subscription_expires_at").maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!updated) throw new Error("Bot not found");
+    await logActivity(supabase, userId, data.botId, "subscription_" + data.action);
+    return updated;
+  });
+
+export const deleteBot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => idInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: bot, error: loadErr } = await supabase.from("bots")
+      .select("id, storage_path, bot_name").eq("id", data.botId).eq("user_id", userId).maybeSingle();
+    if (loadErr) throw new Error(loadErr.message);
+    if (!bot) throw new Error("Bot not found");
+
+    const admin = await loadAdmin();
+    const files = await listUserBotFiles(admin, bot.storage_path);
+    if (files.length > 0) {
+      const { error: rmErr } = await admin.storage.from(USER_BUCKET).remove(files);
+      if (rmErr) throw new Error("Failed to remove files: " + rmErr.message);
+    }
+
+    // Best-effort teardown on the VPS too
+    try {
+      const { agent, isAgentConfigured } = await loadAgent();
+      if (isAgentConfigured()) await agent.delete(data.botId);
+    } catch { /* ignore — DB delete still proceeds */ }
+
+    const { error: delErr } = await supabase.from("bots").delete()
+      .eq("id", data.botId).eq("user_id", userId);
+    if (delErr) throw new Error(delErr.message);
+    await logActivity(supabase, userId, null, "bot_deleted", bot.bot_name);
+    return { ok: true as const };
+  });
+
+async function listUserBotFiles(admin: AdminClient, prefix: string): Promise<string[]> {
+  const out: string[] = [];
+  const queue: string[] = [prefix];
+  while (queue.length) {
+    const dir = queue.shift()!;
+    const { data, error } = await admin.storage.from(USER_BUCKET)
+      .list(dir, { limit: 1000, sortBy: { column: "name", order: "asc" } });
+    if (error) throw new Error(error.message);
+    if (!data) continue;
+    for (const entry of data) {
+      const full = dir + "/" + entry.name;
+      if (entry.id === null) queue.push(full);
+      else out.push(full);
+    }
+  }
+  return out;
+}
+
+async function patchConfigInStorage(storagePath: string, patch: PartialBotPatch) {
+  if (Object.values(patch).every((v) => v === undefined)) return;
+  const admin = await loadAdmin();
+  const cfgPath = storagePath + "/config.json";
+  const { data: blob, error: dlErr } = await admin.storage.from(USER_BUCKET).download(cfgPath);
+  if (dlErr || !blob) throw new Error("Cannot read config.json: " + (dlErr?.message ?? "missing"));
+  const text = await blob.text();
+  const next = patchConfigJson(text, patch);
+  const { error: upErr } = await admin.storage.from(USER_BUCKET)
+    .upload(cfgPath, next, { upsert: true, contentType: "application/json" });
+  if (upErr) throw new Error("Cannot write config.json: " + upErr.message);
+}
+
+// ============================================================
+//                  REAL RUNTIME (from the VPS agent)
+// ============================================================
+
+/** Returns live stats + the latest logs for a bot, straight from pm2. */
+export const getBotRuntime = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      botId: z.string().uuid(),
+      logLines: z.number().int().min(1).max(2000).default(200),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    // Ownership check
+    const { data: owned, error } = await supabase.from("bots")
+      .select("id").eq("id", data.botId).eq("user_id", userId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!owned) throw new Error("Bot not found");
+
+    const { agent, isAgentConfigured } = await loadAgent();
+    if (!isAgentConfigured()) {
+      return {
+        configured: false as const,
+        deployed: false,
+        status: "Offline" as const,
+        cpu: 0, memoryMB: 0, uptime: null as number | null, restarts: 0,
+        logs: "",
+      };
+    }
+    try {
+      const [stats, logs] = await Promise.all([
+        agent.stats(data.botId),
+        agent.logs(data.botId, data.logLines),
+      ]);
+      return {
+        configured: true as const,
+        deployed: stats.deployed,
+        status: stats.status,
+        cpu: stats.cpu ?? 0,
+        memoryMB: stats.memoryMB ?? 0,
+        uptime: stats.uptime ?? null,
+        restarts: stats.restarts ?? 0,
+        logs: logs.logs ?? "",
+      };
+    } catch (e) {
+      return {
+        configured: true as const,
+        deployed: false,
+        status: "Offline" as const,
+        cpu: 0, memoryMB: 0, uptime: null as number | null, restarts: 0,
+        logs: "",
+        error: (e as Error).message,
+      };
+    }
+  });
+
+/** Re-deploy a bot to the VPS (fresh clone + current config). Useful after config edits. */
+export const redeployBot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => idInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: bot, error } = await supabase.from("bots")
+      .select("*").eq("id", data.botId).eq("user_id", userId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!bot) throw new Error("Bot not found");
+    const { agent, isAgentConfigured, buildBotConfig } = await loadAgent();
+    if (!isAgentConfigured()) {
+      throw new Error("VPS agent is not configured yet.");
+    }
+    await agent.deploy(bot.id, buildBotConfig({
+      ...bot,
+      admins: Array.isArray(bot.admins) ? (bot.admins as string[]) : [],
+    }));
+    await logActivity(supabase, userId, bot.id, "bot_redeployed");
+    return { ok: true as const };
+  });
+
+/** Fetch the template requirements.txt so the UI can offer a download. */
+export const downloadRequirements = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const admin = await loadAdmin();
+    const { data: blob, error } = await admin.storage
+      .from(TEMPLATE_BUCKET)
+      .download("requirements.txt");
+    if (error || !blob) throw new Error("requirements.txt not found in template: " + (error?.message ?? "missing"));
+    const text = await blob.text();
+    return { content: text };
+  });
