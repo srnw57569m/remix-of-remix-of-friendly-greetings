@@ -63,6 +63,15 @@ export function Navbar() {
                   Create Bot
                 </Link>
               </li>
+              <li>
+                <Link
+                  to="/profile"
+                  className="rounded-full px-4 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+                  activeProps={{ className: "text-foreground bg-white/5" }}
+                >
+                  Profile
+                </Link>
+              </li>
               {isAdmin && (
                 <li>
                   <Link
