@@ -1,0 +1,180 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * SonicForge — Music Bot platform design system.
+ * Premium dark navy + electric cyan, liquid glass UI.
+ * All colors use oklch.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+
+  --color-electric: var(--electric);
+  --color-cyan-glow: var(--cyan-glow);
+  --color-royal: var(--royal);
+  --color-navy: var(--navy);
+  --color-glass: var(--glass);
+  --color-glass-strong: var(--glass-strong);
+
+  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.875rem;
+
+  /* Brand palette */
+  --background: oklch(0.13 0.05 264);          /* near-black navy */
+  --foreground: oklch(0.97 0.01 240);
+  --card: oklch(0.18 0.06 264);
+  --card-foreground: oklch(0.97 0.01 240);
+  --popover: oklch(0.18 0.06 264);
+  --popover-foreground: oklch(0.97 0.01 240);
+
+  --primary: oklch(0.62 0.22 250);             /* #006FFF electric blue */
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.24 0.07 265);
+  --secondary-foreground: oklch(0.97 0.01 240);
+  --muted: oklch(0.22 0.05 265);
+  --muted-foreground: oklch(0.72 0.04 250);
+  --accent: oklch(0.82 0.16 210);              /* cyan glow */
+  --accent-foreground: oklch(0.13 0.05 264);
+  --destructive: oklch(0.65 0.24 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 6%);
+  --ring: oklch(0.62 0.22 250 / 60%);
+
+  --electric: oklch(0.62 0.22 250);
+  --cyan-glow: oklch(0.85 0.16 205);
+  --royal: oklch(0.30 0.20 265);
+  --navy: oklch(0.18 0.08 265);
+  --glass: oklch(1 0 0 / 5%);
+  --glass-strong: oklch(1 0 0 / 10%);
+
+  /* Gradients */
+  --gradient-hero: radial-gradient(ellipse at 20% 0%, oklch(0.30 0.20 265 / 0.55), transparent 60%),
+                   radial-gradient(ellipse at 80% 30%, oklch(0.62 0.22 250 / 0.35), transparent 55%),
+                   radial-gradient(ellipse at 50% 100%, oklch(0.85 0.16 205 / 0.25), transparent 60%);
+  --gradient-primary: linear-gradient(135deg, oklch(0.62 0.22 250), oklch(0.85 0.16 205));
+  --gradient-glass: linear-gradient(135deg, oklch(1 0 0 / 0.08), oklch(1 0 0 / 0.02));
+
+  /* Shadows */
+  --shadow-glow: 0 0 40px -8px oklch(0.62 0.22 250 / 0.6),
+                 0 0 80px -20px oklch(0.85 0.16 205 / 0.4);
+  --shadow-glass: 0 8px 32px -4px oklch(0 0 0 / 0.4),
+                  inset 0 1px 0 0 oklch(1 0 0 / 0.08);
+  --shadow-card: 0 20px 60px -20px oklch(0 0 0 / 0.6);
+}
+
+.dark { /* same — we ship dark-only */
+  --background: oklch(0.13 0.05 264);
+  --foreground: oklch(0.97 0.01 240);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html { color-scheme: dark; }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(1200px circle at 10% -10%, oklch(0.30 0.20 265 / 0.35), transparent 50%),
+      radial-gradient(1000px circle at 90% 10%, oklch(0.62 0.22 250 / 0.18), transparent 55%),
+      radial-gradient(800px circle at 50% 110%, oklch(0.85 0.16 205 / 0.12), transparent 60%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }
+}
+
+/* === Glass utilities === */
+@utility glass {
+  background: var(--gradient-glass);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid oklch(1 0 0 / 0.1);
+  box-shadow: var(--shadow-glass);
+}
+
+@utility glass-strong {
+  background: linear-gradient(135deg, oklch(1 0 0 / 0.12), oklch(1 0 0 / 0.04));
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid oklch(1 0 0 / 0.14);
+  box-shadow: var(--shadow-glass);
+}
+
+@utility glow-primary {
+  box-shadow: var(--shadow-glow);
+}
+
+@utility text-gradient {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility bg-hero {
+  background: var(--gradient-hero);
+}
+
+/* === Animations === */
+@keyframes float {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  50% { transform: translateY(-20px) translateX(10px); }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.05); }
+  66% { transform: translate(-20px, 30px) scale(0.97); }
+}
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@utility animate-float { animation: float 6s ease-in-out infinite; }
+@utility animate-float-slow { animation: float-slow 16s ease-in-out infinite; }
+@utility animate-glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
+@utility animate-fade-up { animation: fade-up 0.8s ease-out both; }
