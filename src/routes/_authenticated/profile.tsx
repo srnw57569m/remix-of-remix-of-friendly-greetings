@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { motion } from "framer-motion";
-import { CheckCircle2, Copy, ExternalLink, Sparkles, Unlink, User2 } from "lucide-react";
+import { CheckCircle2, Coins, Copy, ExternalLink, Sparkles, Unlink, User2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { connectHighrise, disconnectHighrise, getMyProfile } from "@/lib/profile.functions";
+import { getWallet } from "@/lib/wallet.functions";
 
 const ROOM_LINK = "https://high.rs/world?id=6894bd39e3e4a405517cb530";
 
@@ -37,10 +38,15 @@ function ProfilePage() {
   const getProfile = useServerFn(getMyProfile);
   const connect = useServerFn(connectHighrise);
   const disconnect = useServerFn(disconnectHighrise);
+  const getWalletFn = useServerFn(getWallet);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["my-profile"],
     queryFn: () => getProfile(),
+  });
+  const { data: wallet } = useQuery({
+    queryKey: ["wallet"],
+    queryFn: () => getWalletFn(),
   });
 
   const [open, setOpen] = useState(false);
@@ -101,6 +107,45 @@ function ProfilePage() {
                 Dashboard
               </Link>
             </div>
+          </section>
+
+          {/* Wallet */}
+          <section className="glass-strong rounded-3xl p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Coins className="h-4 w-4 text-amber-300" />
+                  <h3 className="text-lg font-semibold">Gold Wallet</h3>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Tip the connector bot inside Highrise to deposit gold instantly.
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Balance</p>
+                <p className="font-mono text-3xl text-amber-200">{wallet?.balance ?? 0}<span className="ml-1 text-base text-muted-foreground">g</span></p>
+              </div>
+            </div>
+            {wallet?.transactions && wallet.transactions.length > 0 && (
+              <ul className="mt-5 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/5">
+                {wallet.transactions.slice(0, 6).map((t) => (
+                  <li key={t.id} className="flex items-center justify-between gap-2 px-4 py-2.5 text-sm">
+                    <div className="min-w-0">
+                      <span className="font-mono text-xs text-accent">{t.kind}</span>
+                      {t.detail && <span className="ml-2 truncate text-muted-foreground">{t.detail}</span>}
+                    </div>
+                    <div className="text-right">
+                      <p className={`font-mono text-sm ${t.amount >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                        {t.amount >= 0 ? "+" : ""}{t.amount}g
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {new Date(t.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
           {/* Highrise connection */}

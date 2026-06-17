@@ -51,6 +51,7 @@ import {
   setSubscription,
   updateBotConfig,
 } from "@/lib/bots.functions";
+import { getWallet, purchaseBotPlan, PLAN_CATALOG, type PlanDuration } from "@/lib/wallet.functions";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 
 export const Route = createFileRoute("/_authenticated/dashboard/bot/$botId")({
@@ -335,6 +336,8 @@ function BotControlPanel() {
             setSubFn={setSubFn}
             onChange={invalidate}
           />
+
+          <PlansCard botId={botId} onChange={invalidate} />
         </div>
 
         {/* Activity */}
@@ -756,6 +759,54 @@ function SubscriptionCard({
             <CircleOff className="mr-1.5 size-4" /> Disable
           </Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PlansCard({ botId, onChange }: { botId: string; onChange: () => void }) {
+  const qc = useQueryClient();
+  const getWalletFn = useServerFn(getWallet);
+  const purchaseFn = useServerFn(purchaseBotPlan);
+  const { data: wallet } = useQuery({
+    queryKey: ["wallet"],
+    queryFn: () => getWalletFn(),
+  });
+  const mutation = useMutation({
+    mutationFn: (duration: PlanDuration) => purchaseFn({ data: { botId, duration } }),
+    onSuccess: (res) => {
+      toast.success(`Plan activated · ${res.balanceAfter}g left`);
+      qc.invalidateQueries({ queryKey: ["wallet"] });
+      onChange();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const balance = wallet?.balance ?? 0;
+  const order: PlanDuration[] = ["hourly", "daily", "weekly", "monthly", "yearly"];
+  return (
+    <div className="glass-strong rounded-3xl p-6">
+      <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
+        <Timer className="size-4 text-accent" /> Rent this bot
+      </h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Pay with in-game gold. Wallet balance: <span className="font-mono text-foreground">{balance}g</span>
+      </p>
+      <div className="mt-4 grid gap-2">
+        {order.map((d) => {
+          const p = PLAN_CATALOG[d];
+          const canAfford = balance >= p.price;
+          return (
+            <button
+              key={d}
+              disabled={!canAfford || mutation.isPending}
+              onClick={() => mutation.mutate(d)}
+              className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm transition hover:bg-white/10 disabled:opacity-40"
+            >
+              <span className="font-medium">{p.label}</span>
+              <span className="font-mono text-xs text-accent">{p.price}g</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
