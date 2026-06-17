@@ -4,6 +4,32 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
+  head: () => ({
+    meta: [
+      { property: "og:url", content: "https://weave-warm-logic.lovable.app/" },
+    ],
+    links: [{ rel: "canonical", href: "https://weave-warm-logic.lovable.app/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "SonicForge",
+          url: "https://weave-warm-logic.lovable.app/",
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "SonicForge",
+          url: "https://weave-warm-logic.lovable.app/",
+        }),
+      },
+    ],
+  }),
 });
 
 const features = [
@@ -59,7 +85,7 @@ function LandingPage() {
             >
               <span className="absolute -inset-1 rounded-full bg-gradient-to-r from-primary via-accent to-primary blur-md opacity-70 group-hover:opacity-100 transition-opacity" />
               <span className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-accent" />
-              <span className="relative">JOIN US</span>
+              <span className="relative">Get Started Free</span>
               <ArrowRight className="relative h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
 

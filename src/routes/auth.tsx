@@ -14,6 +14,30 @@ const searchSchema = z.object({
 export const Route = createFileRoute("/auth")({
   validateSearch: searchSchema,
   component: AuthPage,
+  head: () => ({
+    meta: [
+      { title: "Sign in or Create an Account — SonicForge" },
+      {
+        name: "description",
+        content:
+          "Log in to SonicForge or create a free account to build, deploy, and manage your own Highrise music bot.",
+      },
+      { property: "og:title", content: "Sign in or Create an Account — SonicForge" },
+      {
+        property: "og:description",
+        content:
+          "Log in or sign up to deploy your personalized Highrise music bot in minutes.",
+      },
+      { property: "og:url", content: "https://weave-warm-logic.lovable.app/auth" },
+      { name: "twitter:title", content: "Sign in or Create an Account — SonicForge" },
+      {
+        name: "twitter:description",
+        content:
+          "Log in or sign up to deploy your personalized Highrise music bot in minutes.",
+      },
+    ],
+    links: [{ rel: "canonical", href: "https://weave-warm-logic.lovable.app/auth" }],
+  }),
 });
 
 const signupSchema = z

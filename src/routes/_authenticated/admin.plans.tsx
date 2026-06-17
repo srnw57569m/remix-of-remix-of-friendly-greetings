@@ -12,6 +12,13 @@ import { listPlans, updatePlanPrice, type PlanDuration } from "@/lib/wallet.func
 
 export const Route = createFileRoute("/_authenticated/admin/plans")({
   component: AdminPlansPage,
+  head: () => ({
+    meta: [
+      { title: "Plan Pricing — SonicForge Admin" },
+      { name: "description", content: "Manage SonicForge subscription plan prices." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
 });
 
 function AdminPlansPage() {
