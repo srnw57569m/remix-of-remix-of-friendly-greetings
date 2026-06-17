@@ -19,7 +19,9 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedDashboardCreateRouteImport } from './routes/_authenticated/dashboard.create'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminBotsRouteImport } from './routes/_authenticated/admin.bots'
+import { Route as ApiPublicCronExpireBotsRouteImport } from './routes/api/public/cron.expire-bots'
 import { Route as ApiPublicBankIssueRouteImport } from './routes/api/public/bank.issue'
+import { Route as ApiPublicBankDepositRouteImport } from './routes/api/public/bank.deposit'
 import { Route as AuthenticatedDashboardBotBotIdRouteImport } from './routes/_authenticated/dashboard.bot.$botId'
 import { Route as AuthenticatedAdminUsersUserIdRouteImport } from './routes/_authenticated/admin.users.$userId'
 
@@ -74,9 +76,19 @@ const AuthenticatedAdminBotsRoute = AuthenticatedAdminBotsRouteImport.update({
   path: '/bots',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const ApiPublicCronExpireBotsRoute = ApiPublicCronExpireBotsRouteImport.update({
+  id: '/api/public/cron/expire-bots',
+  path: '/api/public/cron/expire-bots',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicBankIssueRoute = ApiPublicBankIssueRouteImport.update({
   id: '/api/public/bank/issue',
   path: '/api/public/bank/issue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicBankDepositRoute = ApiPublicBankDepositRouteImport.update({
+  id: '/api/public/bank/deposit',
+  path: '/api/public/bank/deposit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedDashboardBotBotIdRoute =
@@ -104,7 +116,9 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/dashboard/bot/$botId': typeof AuthenticatedDashboardBotBotIdRoute
+  '/api/public/bank/deposit': typeof ApiPublicBankDepositRoute
   '/api/public/bank/issue': typeof ApiPublicBankIssueRoute
+  '/api/public/cron/expire-bots': typeof ApiPublicCronExpireBotsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -117,7 +131,9 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/dashboard/bot/$botId': typeof AuthenticatedDashboardBotBotIdRoute
+  '/api/public/bank/deposit': typeof ApiPublicBankDepositRoute
   '/api/public/bank/issue': typeof ApiPublicBankIssueRoute
+  '/api/public/cron/expire-bots': typeof ApiPublicCronExpireBotsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -133,7 +149,9 @@ export interface FileRoutesById {
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/_authenticated/dashboard/bot/$botId': typeof AuthenticatedDashboardBotBotIdRoute
+  '/api/public/bank/deposit': typeof ApiPublicBankDepositRoute
   '/api/public/bank/issue': typeof ApiPublicBankIssueRoute
+  '/api/public/cron/expire-bots': typeof ApiPublicCronExpireBotsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -149,7 +167,9 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/admin/users/$userId'
     | '/dashboard/bot/$botId'
+    | '/api/public/bank/deposit'
     | '/api/public/bank/issue'
+    | '/api/public/cron/expire-bots'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -162,7 +182,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/admin/users/$userId'
     | '/dashboard/bot/$botId'
+    | '/api/public/bank/deposit'
     | '/api/public/bank/issue'
+    | '/api/public/cron/expire-bots'
   id:
     | '__root__'
     | '/'
@@ -177,14 +199,18 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/'
     | '/_authenticated/admin/users/$userId'
     | '/_authenticated/dashboard/bot/$botId'
+    | '/api/public/bank/deposit'
     | '/api/public/bank/issue'
+    | '/api/public/cron/expire-bots'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicBankDepositRoute: typeof ApiPublicBankDepositRoute
   ApiPublicBankIssueRoute: typeof ApiPublicBankIssueRoute
+  ApiPublicCronExpireBotsRoute: typeof ApiPublicCronExpireBotsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -259,11 +285,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminBotsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/public/cron/expire-bots': {
+      id: '/api/public/cron/expire-bots'
+      path: '/api/public/cron/expire-bots'
+      fullPath: '/api/public/cron/expire-bots'
+      preLoaderRoute: typeof ApiPublicCronExpireBotsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/bank/issue': {
       id: '/api/public/bank/issue'
       path: '/api/public/bank/issue'
       fullPath: '/api/public/bank/issue'
       preLoaderRoute: typeof ApiPublicBankIssueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/bank/deposit': {
+      id: '/api/public/bank/deposit'
+      path: '/api/public/bank/deposit'
+      fullPath: '/api/public/bank/deposit'
+      preLoaderRoute: typeof ApiPublicBankDepositRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/dashboard/bot/$botId': {
@@ -335,7 +375,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicBankDepositRoute: ApiPublicBankDepositRoute,
   ApiPublicBankIssueRoute: ApiPublicBankIssueRoute,
+  ApiPublicCronExpireBotsRoute: ApiPublicCronExpireBotsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
