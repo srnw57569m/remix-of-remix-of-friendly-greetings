@@ -394,7 +394,7 @@ export const addBotAdmin = createServerFn({ method: "POST" })
     const { error: upErr } = await supabase.from("bots").update({ admins })
       .eq("id", data.botId).eq("user_id", userId);
     if (upErr) throw new Error(upErr.message);
-    await patchConfigInStorage(bot.storage_path, { admins });
+    await patchConfigInStorage(bot.storage_path, { admins }, data.botId);
     await logActivity(supabase, userId, data.botId, "admin_added", data.username);
     return { admins };
   });
@@ -413,7 +413,7 @@ export const removeBotAdmin = createServerFn({ method: "POST" })
     const { error: upErr } = await supabase.from("bots").update({ admins })
       .eq("id", data.botId).eq("user_id", userId);
     if (upErr) throw new Error(upErr.message);
-    await patchConfigInStorage(bot.storage_path, { admins });
+    await patchConfigInStorage(bot.storage_path, { admins }, data.botId);
     await logActivity(supabase, userId, data.botId, "admin_removed", data.username);
     return { admins };
   });
@@ -491,7 +491,7 @@ async function listUserBotFiles(admin: AdminClient, prefix: string): Promise<str
   return out;
 }
 
-async function patchConfigInStorage(storagePath: string, patch: PartialBotPatch) {
+async function patchConfigInStorage(storagePath: string, patch: PartialBotPatch, botId?: string) {
   if (Object.values(patch).every((v) => v === undefined)) return;
   const admin = await loadAdmin();
   const cfgPath = storagePath + "/config.json";
@@ -506,11 +506,11 @@ async function patchConfigInStorage(storagePath: string, patch: PartialBotPatch)
     throw new Error("Cannot read config.json: " + dlErr.message);
   }
   if (patch.admins !== undefined) {
-    await patchMusicbotPosAdmins(storagePath, patch.admins);
+    await patchMusicbotPosAdmins(storagePath, patch.admins, botId);
   }
 }
 
-async function patchMusicbotPosAdmins(storagePath: string, admins: string[]) {
+async function patchMusicbotPosAdmins(storagePath: string, admins: string[], botId?: string) {
   const admin = await loadAdmin();
   const posPath = storagePath + "/musicbot_pos.json";
   let current: Record<string, unknown> = {
@@ -528,9 +528,18 @@ async function patchMusicbotPosAdmins(storagePath: string, admins: string[]) {
     } catch { /* keep defaults */ }
   }
   current.admins = admins;
+  const serialized = JSON.stringify(current, null, 2);
   const { error: upErr } = await admin.storage.from(USER_BUCKET)
-    .upload(posPath, JSON.stringify(current, null, 2), { upsert: true, contentType: "application/json" });
+    .upload(posPath, serialized, { upsert: true, contentType: "application/json" });
   if (upErr) throw new Error("Cannot write musicbot_pos.json: " + upErr.message);
+  if (botId) {
+    try {
+      const { agent, isAgentConfigured } = await loadAgent();
+      if (isAgentConfigured()) {
+        await agent.updateFile(botId, "musicbot_pos.json", serialized);
+      }
+    } catch { /* best-effort: VPS may not expose /file endpoint yet */ }
+  }
 }
 
 // ============================================================

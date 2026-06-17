@@ -83,6 +83,8 @@ export const agent = {
   stop: (botId: string) => call("POST", "/stop", { botId }),
   restart: (botId: string) => call("POST", "/restart", { botId }),
   delete: (botId: string) => call("POST", "/delete", { botId }),
+  updateFile: (botId: string, path: string, content: string) =>
+    call("POST", "/file", { botId, path, content }),
   stats: (botId: string) =>
     call<AgentStats>("GET", `/stats?botId=${encodeURIComponent(botId)}`),
   logs: (botId: string, lines = 200) =>
