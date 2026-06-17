@@ -66,6 +66,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Create, deploy, and manage your own music bot without technical knowledge." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "SonicForge — Build Your Music Bot In Minutes" },
+      { name: "twitter:description", content: "Create, deploy, and manage your own music bot without technical knowledge." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a4a1d5ac-dc67-426e-9b06-3ce19bc6c324/id-preview-bcafdaed--98006cfe-cde7-48a3-85d9-1cb86ef932a0.lovable.app-1781718973365.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a4a1d5ac-dc67-426e-9b06-3ce19bc6c324/id-preview-bcafdaed--98006cfe-cde7-48a3-85d9-1cb86ef932a0.lovable.app-1781718973365.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
