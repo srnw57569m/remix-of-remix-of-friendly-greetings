@@ -709,12 +709,14 @@ function SubscriptionCard({
   expiresAt,
   setSubFn,
   onChange,
+  canManage,
 }: {
   botId: string;
   status: string;
   expiresAt: string | null;
   setSubFn: (args: any) => Promise<any>;
   onChange: () => void;
+  canManage: boolean;
 }) {
   const mutation = useMutation({
     mutationFn: (action: "activate" | "disable") => setSubFn({ data: { botId, action } }),
@@ -731,7 +733,9 @@ function SubscriptionCard({
         <Calendar className="size-4 text-accent" /> Subscription
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">
-        Toggle premium features and renewal for this bot.
+        {canManage
+          ? "Toggle premium features and renewal for this bot."
+          : "View your current subscription status. Only admins can change it."}
       </p>
       <div className="mt-5 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4">
         <div>
@@ -743,25 +747,27 @@ function SubscriptionCard({
             Expires {expiresAt ? new Date(expiresAt).toLocaleDateString() : "—"}
           </p>
         </div>
-        <div className="flex flex-col gap-2">
-          <Button
-            size="sm"
-            disabled={active || mutation.isPending}
-            onClick={() => mutation.mutate("activate")}
-            className="rounded-full bg-emerald-500/80 hover:bg-emerald-500"
-          >
-            <CircleCheck className="mr-1.5 size-4" /> Activate
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={!active || mutation.isPending}
-            onClick={() => mutation.mutate("disable")}
-            className="rounded-full border-white/10 bg-white/5"
-          >
-            <CircleOff className="mr-1.5 size-4" /> Disable
-          </Button>
-        </div>
+        {canManage && (
+          <div className="flex flex-col gap-2">
+            <Button
+              size="sm"
+              disabled={active || mutation.isPending}
+              onClick={() => mutation.mutate("activate")}
+              className="rounded-full bg-emerald-500/80 hover:bg-emerald-500"
+            >
+              <CircleCheck className="mr-1.5 size-4" /> Activate
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={!active || mutation.isPending}
+              onClick={() => mutation.mutate("disable")}
+              className="rounded-full border-white/10 bg-white/5"
+            >
+              <CircleOff className="mr-1.5 size-4" /> Disable
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
