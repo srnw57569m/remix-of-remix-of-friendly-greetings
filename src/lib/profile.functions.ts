@@ -58,7 +58,7 @@ export const disconnectHighrise = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("profiles")
-      .update({ highrise_username: null, highrise_connected_at: null })
+      .update({ highrise_username: null, highrise_id: null, highrise_connected_at: null })
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };

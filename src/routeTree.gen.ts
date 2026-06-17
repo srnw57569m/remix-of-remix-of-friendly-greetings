@@ -19,6 +19,7 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedDashboardCreateRouteImport } from './routes/_authenticated/dashboard.create'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminBotsRouteImport } from './routes/_authenticated/admin.bots'
+import { Route as ApiPublicBankIssueRouteImport } from './routes/api/public/bank.issue'
 import { Route as AuthenticatedDashboardBotBotIdRouteImport } from './routes/_authenticated/dashboard.bot.$botId'
 import { Route as AuthenticatedAdminUsersUserIdRouteImport } from './routes/_authenticated/admin.users.$userId'
 
@@ -73,6 +74,11 @@ const AuthenticatedAdminBotsRoute = AuthenticatedAdminBotsRouteImport.update({
   path: '/bots',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const ApiPublicBankIssueRoute = ApiPublicBankIssueRouteImport.update({
+  id: '/api/public/bank/issue',
+  path: '/api/public/bank/issue',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedDashboardBotBotIdRoute =
   AuthenticatedDashboardBotBotIdRouteImport.update({
     id: '/dashboard/bot/$botId',
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/dashboard/bot/$botId': typeof AuthenticatedDashboardBotBotIdRoute
+  '/api/public/bank/issue': typeof ApiPublicBankIssueRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/dashboard/bot/$botId': typeof AuthenticatedDashboardBotBotIdRoute
+  '/api/public/bank/issue': typeof ApiPublicBankIssueRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/_authenticated/dashboard/bot/$botId': typeof AuthenticatedDashboardBotBotIdRoute
+  '/api/public/bank/issue': typeof ApiPublicBankIssueRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/admin/users/$userId'
     | '/dashboard/bot/$botId'
+    | '/api/public/bank/issue'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/admin/users/$userId'
     | '/dashboard/bot/$botId'
+    | '/api/public/bank/issue'
   id:
     | '__root__'
     | '/'
@@ -166,12 +177,14 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/'
     | '/_authenticated/admin/users/$userId'
     | '/_authenticated/dashboard/bot/$botId'
+    | '/api/public/bank/issue'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicBankIssueRoute: typeof ApiPublicBankIssueRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -246,6 +259,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminBotsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/public/bank/issue': {
+      id: '/api/public/bank/issue'
+      path: '/api/public/bank/issue'
+      fullPath: '/api/public/bank/issue'
+      preLoaderRoute: typeof ApiPublicBankIssueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/dashboard/bot/$botId': {
       id: '/_authenticated/dashboard/bot/$botId'
       path: '/dashboard/bot/$botId'
@@ -315,6 +335,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicBankIssueRoute: ApiPublicBankIssueRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
