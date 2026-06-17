@@ -183,9 +183,6 @@ function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t border-white/5 py-10 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} BeatlY — Premium sound. Power servers.
-      </footer>
     </main>
   );
 }
