@@ -118,10 +118,36 @@ export type Database = {
         }
         Relationships: []
       }
+      highrise_codes: {
+        Row: {
+          claimed_by: string | null
+          code: string
+          created_at: string
+          highrise_username: string
+          used_at: string | null
+        }
+        Insert: {
+          claimed_by?: string | null
+          code: string
+          created_at?: string
+          highrise_username: string
+          used_at?: string | null
+        }
+        Update: {
+          claimed_by?: string | null
+          code?: string
+          created_at?: string
+          highrise_username?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
           email: string
+          highrise_connected_at: string | null
+          highrise_username: string | null
           id: string
           suspended: boolean
           suspended_at: string | null
@@ -133,6 +159,8 @@ export type Database = {
         Insert: {
           created_at?: string
           email: string
+          highrise_connected_at?: string | null
+          highrise_username?: string | null
           id: string
           suspended?: boolean
           suspended_at?: string | null
@@ -144,6 +172,8 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+          highrise_connected_at?: string | null
+          highrise_username?: string | null
           id?: string
           suspended?: boolean
           suspended_at?: string | null
