@@ -101,19 +101,31 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function Footer() {
   return (
-    <footer className="border-t border-white/5 py-10 text-center text-sm text-muted-foreground">
-      <p>© 2026 BeatlY — Premium sound. Power servers.</p>
-      <p className="mt-2">
-        If you want to support us, you can tip us at{" "}
-        <a
-          href="https://www.paypal.me/ahmedashraf789"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline underline-offset-4 text-accent hover:text-primary transition-colors"
-        >
-          PayPal
-        </a>
-        .
+    <footer className="border-t border-white/5 px-4 py-10">
+      <div className="mx-auto max-w-xl">
+        <div className="glass-strong relative overflow-hidden rounded-2xl p-6 text-center">
+          <div className="absolute inset-0 bg-hero opacity-40 pointer-events-none" />
+          <div className="relative z-10 flex flex-col items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-glow">
+              <Heart size={18} className="fill-current" />
+            </div>
+            <p className="text-sm font-medium text-foreground">
+              Enjoying BeatlY? Support the platform
+            </p>
+            <a
+              href="https://www.paypal.me/ahmedashraf789"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow transition-transform hover:scale-105"
+            >
+              <Heart size={16} className="fill-current" />
+              Send a tip on PayPal
+            </a>
+          </div>
+        </div>
+      </div>
+      <p className="mt-8 text-center text-xs text-muted-foreground">
+        © 2026 BeatlY — Premium sound. Power servers.
       </p>
     </footer>
   );
