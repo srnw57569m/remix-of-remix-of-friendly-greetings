@@ -768,9 +768,14 @@ function PlansCard({ botId, onChange }: { botId: string; onChange: () => void })
   const qc = useQueryClient();
   const getWalletFn = useServerFn(getWallet);
   const purchaseFn = useServerFn(purchaseBotPlan);
+  const listPlansFn = useServerFn(listPlans);
   const { data: wallet } = useQuery({
     queryKey: ["wallet"],
     queryFn: () => getWalletFn(),
+  });
+  const { data: plans } = useQuery({
+    queryKey: ["plans"],
+    queryFn: () => listPlansFn(),
   });
   const mutation = useMutation({
     mutationFn: (duration: PlanDuration) => purchaseFn({ data: { botId, duration } }),
@@ -782,7 +787,6 @@ function PlansCard({ botId, onChange }: { botId: string; onChange: () => void })
     onError: (e: Error) => toast.error(e.message),
   });
   const balance = wallet?.balance ?? 0;
-  const order: PlanDuration[] = ["hourly", "daily", "weekly", "monthly", "yearly"];
   return (
     <div className="glass-strong rounded-3xl p-6">
       <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
@@ -792,14 +796,13 @@ function PlansCard({ botId, onChange }: { botId: string; onChange: () => void })
         Pay with in-game gold. Wallet balance: <span className="font-mono text-foreground">{balance}g</span>
       </p>
       <div className="mt-4 grid gap-2">
-        {order.map((d) => {
-          const p = PLAN_CATALOG[d];
+        {(plans ?? []).map((p) => {
           const canAfford = balance >= p.price;
           return (
             <button
-              key={d}
+              key={p.duration}
               disabled={!canAfford || mutation.isPending}
-              onClick={() => mutation.mutate(d)}
+              onClick={() => mutation.mutate(p.duration as PlanDuration)}
               className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm transition hover:bg-white/10 disabled:opacity-40"
             >
               <span className="font-medium">{p.label}</span>
