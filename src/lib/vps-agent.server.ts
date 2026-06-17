@@ -60,19 +60,21 @@ async function call<T = unknown>(
     );
   }
 
+  try {
     const text = await r.text();
     let parsed: any;
     try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = { raw: text }; }
     if (!r.ok || parsed?.ok === false) {
-      const base = parsed?.error || `Agent ${r.status}`;
+      const baseMsg = parsed?.error || `Agent ${r.status}`;
       const detail = parsed?.detail ? `: ${String(parsed.detail).slice(0, 600)}` : (parsed?.error ? "" : `: ${text.slice(0, 200)}`);
-      throw new Error(`${base}${detail}`);
+      throw new Error(`${baseMsg}${detail}`);
     }
     return parsed as T;
   } finally {
     clearTimeout(timer);
   }
 }
+
 
 export const agent = {
   deploy: (botId: string, config: Record<string, unknown>) =>
