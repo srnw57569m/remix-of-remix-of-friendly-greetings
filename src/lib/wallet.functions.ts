@@ -125,13 +125,13 @@ export const updatePlanPrice = createServerFn({ method: "POST" })
     if (!roles || roles.length === 0) throw new Error("Forbidden: admin role required");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const patch: Record<string, unknown> = {
+    const patch = {
       price: data.price,
       updated_at: new Date().toISOString(),
       updated_by: userId,
+      ...(data.label ? { label: data.label } : {}),
+      ...(data.interval_sql ? { interval_sql: data.interval_sql } : {}),
     };
-    if (data.label) patch.label = data.label;
-    if (data.interval_sql) patch.interval_sql = data.interval_sql;
 
     const { error } = await supabaseAdmin
       .from("plan_prices")
