@@ -1,4 +1,4 @@
-# BeatlY — Premium Sound. Power Servers.
+# BeatlY — Premium Sound. Power Servers..
 
 A full-stack bot hosting and management platform for Highrise music bots. Users create, configure and control radio bots through a modern dashboard, with real-time start/stop/restart, live logs, CPU/RAM stats, and a wallet system powered by in-game gold tipping.
 
