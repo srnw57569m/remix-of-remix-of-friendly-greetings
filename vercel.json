@@ -1,12 +1,17 @@
 {
-  "version": 3,
+  "functions": {
+    "api/**/*": {
+      "runtime": "vercel-node"
+    }
+  },
   "routes": [
     {
-      "handle": "filesystem"
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "/dist/server/server.js"
+      "dest": "/index.html"
     }
   ]
 }
