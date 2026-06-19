@@ -423,9 +423,11 @@ export const addBotAdmin = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: bot, error: loadErr } = await supabase.from("bots")
-      .select("id, admins, storage_path").eq("id", data.botId).eq("user_id", userId).maybeSingle();
+      .select("id, admins, storage_path, status, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
+      .eq("id", data.botId).eq("user_id", userId).maybeSingle();
     if (loadErr) throw new Error(loadErr.message);
     if (!bot) throw new Error("Bot not found");
+    assertBotEditable(bot as any);
     const current = Array.isArray(bot.admins) ? (bot.admins as string[]) : [];
     if (current.includes(data.username)) return { admins: current };
     const admins = [...current, data.username];
@@ -443,9 +445,11 @@ export const removeBotAdmin = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: bot, error: loadErr } = await supabase.from("bots")
-      .select("id, admins, storage_path").eq("id", data.botId).eq("user_id", userId).maybeSingle();
+      .select("id, admins, storage_path, status, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
+      .eq("id", data.botId).eq("user_id", userId).maybeSingle();
     if (loadErr) throw new Error(loadErr.message);
     if (!bot) throw new Error("Bot not found");
+    assertBotEditable(bot as any);
     const current = Array.isArray(bot.admins) ? (bot.admins as string[]) : [];
     const admins = current.filter((u) => u !== data.username);
     const { error: upErr } = await supabase.from("bots").update({ admins })
