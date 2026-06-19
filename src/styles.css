@@ -99,14 +99,48 @@
   --shadow-card: 0 20px 60px -20px oklch(0 0 0 / 0.6);
 }
 
-.dark { /* same — we ship dark-only */
+.dark {
   --background: oklch(0.13 0.05 264);
   --foreground: oklch(0.97 0.01 240);
+  --card: oklch(0.18 0.06 264);
+  --card-foreground: oklch(0.97 0.01 240);
+  --popover: oklch(0.18 0.06 264);
+  --popover-foreground: oklch(0.97 0.01 240);
+  --secondary: oklch(0.24 0.07 265);
+  --secondary-foreground: oklch(0.97 0.01 240);
+  --muted: oklch(0.22 0.05 265);
+  --muted-foreground: oklch(0.72 0.04 250);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 6%);
+  --glass: oklch(1 0 0 / 5%);
+  --glass-strong: oklch(1 0 0 / 10%);
+}
+
+.light {
+  --background: oklch(0.98 0.005 250);
+  --foreground: oklch(0.18 0.05 264);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.05 264);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.05 264);
+  --primary: oklch(0.55 0.22 250);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.94 0.02 250);
+  --secondary-foreground: oklch(0.18 0.05 264);
+  --muted: oklch(0.94 0.02 250);
+  --muted-foreground: oklch(0.45 0.04 250);
+  --accent: oklch(0.55 0.18 210);
+  --accent-foreground: oklch(0.99 0 0);
+  --border: oklch(0.18 0.05 264 / 10%);
+  --input: oklch(0.18 0.05 264 / 6%);
+  --glass: oklch(0.18 0.05 264 / 4%);
+  --glass-strong: oklch(1 0 0 / 70%);
 }
 
 @layer base {
   * { border-color: var(--color-border); }
   html { color-scheme: dark; }
+  html.light { color-scheme: light; }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -117,6 +151,13 @@
       radial-gradient(1000px circle at 90% 10%, oklch(0.62 0.22 250 / 0.18), transparent 55%),
       radial-gradient(800px circle at 50% 110%, oklch(0.85 0.16 205 / 0.12), transparent 60%);
     background-attachment: fixed;
+    transition: background-color 0.4s ease, color 0.3s ease;
+  }
+  html.light body {
+    background-image:
+      radial-gradient(1200px circle at 10% -10%, oklch(0.55 0.22 250 / 0.12), transparent 50%),
+      radial-gradient(1000px circle at 90% 10%, oklch(0.55 0.18 210 / 0.10), transparent 55%),
+      radial-gradient(800px circle at 50% 110%, oklch(0.85 0.16 205 / 0.08), transparent 60%);
   }
   h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }
 }

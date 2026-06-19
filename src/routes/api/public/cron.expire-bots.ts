@@ -53,13 +53,13 @@ export const Route = createFileRoute("/api/public/cron/expire-bots")({
           }
           await supabaseAdmin.from("bots").update({
             subscription_status: "Expired",
-            status: "Suspended",
+            status: "Expired",
           }).eq("id", bot.id);
           await supabaseAdmin.from("activity_logs").insert({
             user_id: bot.user_id,
             bot_id: bot.id,
             action: "bot_expired",
-            detail: err ? `agent error: ${err}` : "rent time finished — bot suspended, renew to resume",
+            detail: err ? `agent error: ${err}` : "rent time finished — bot expired, renew to resume",
           });
           results.push({ id: bot.id, ok: !err, error: err ?? undefined });
         }

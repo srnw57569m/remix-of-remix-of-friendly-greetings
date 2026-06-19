@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Sparkles, Wand2, Shield, LayoutDashboard, Settings2 } from "lucide-react";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { useRef } from "react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 export const Route = createFileRoute("/")({
@@ -56,13 +58,25 @@ const features = [
 ];
 
 function LandingPage() {
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+  const heroY = useTransform(scrollYProgress, [0, 1], [0, 180]);
+  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.92]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0.3]);
+
   return (
-    <main className="relative">
+    <main className="relative" style={{ perspective: 1200 }}>
       {/* ===== HERO ===== */}
-      <section className="relative isolate min-h-screen overflow-hidden pt-40 pb-24 sm:pt-44">
+      <section ref={heroRef} className="relative isolate min-h-screen overflow-hidden pt-40 pb-24 sm:pt-44">
         <AnimatedBackground />
 
-        <div className="mx-auto max-w-5xl px-6 text-center animate-fade-up">
+        <motion.div
+          style={{ y: heroY, scale: heroScale, opacity: heroOpacity }}
+          className="mx-auto max-w-5xl px-6 text-center"
+        >
           <div className="glass mx-auto inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs text-muted-foreground">
             <Sparkles className="h-3.5 w-3.5 text-accent" />
             <span>Powered by next-gen music engines</span>
@@ -120,37 +134,48 @@ function LandingPage() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* ===== FEATURES ===== */}
       <section id="features" className="relative py-32">
         <div className="mx-auto max-w-6xl px-6">
-          <div className="mx-auto max-w-2xl text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="mx-auto max-w-2xl text-center"
+          >
             <h2 className="font-display text-4xl font-bold sm:text-5xl">
               Everything you need to <span className="text-gradient">go live</span>
             </h2>
             <p className="mt-4 text-muted-foreground">
               A premium platform that takes care of the heavy lifting so you can focus on the vibe.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4" style={{ perspective: 1000 }}>
             {features.map((f, i) => (
-              <div
+              <motion.div
                 key={f.title}
-                className="group relative animate-fade-up"
-                style={{ animationDelay: `${i * 0.08}s` }}
+                initial={{ opacity: 0, y: 60, rotateX: -15 }}
+                whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.6, delay: i * 0.1, ease: [0.21, 0.47, 0.32, 0.98] }}
+                whileHover={{ y: -8, rotateX: 4, rotateY: -4, transition: { duration: 0.3 } }}
+                className="group relative"
+                style={{ transformStyle: "preserve-3d" }}
               >
                 <div className="absolute -inset-px rounded-3xl bg-gradient-to-br from-primary/40 to-accent/40 opacity-0 blur transition-opacity duration-500 group-hover:opacity-100" />
-                <div className="glass-strong relative h-full rounded-3xl p-6 transition-transform duration-500 group-hover:-translate-y-1">
+                <div className="glass-strong relative h-full rounded-3xl p-6">
                   <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-[0_8px_30px_-8px_oklch(0.62_0.22_250/0.7)]">
                     <f.icon className="h-6 w-6 text-primary-foreground" />
                   </div>
                   <h3 className="mt-5 font-display text-xl font-semibold">{f.title}</h3>
                   <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -158,7 +183,13 @@ function LandingPage() {
 
       {/* ===== PRICING TEASER ===== */}
       <section id="pricing" className="relative py-32">
-        <div className="mx-auto max-w-4xl px-6 text-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.92, y: 50 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: true, margin: "-120px" }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="mx-auto max-w-4xl px-6 text-center"
+        >
           <div className="glass-strong relative overflow-hidden rounded-3xl p-12">
             <div className="absolute inset-0 bg-hero opacity-50" />
             <div className="relative">
@@ -180,7 +211,7 @@ function LandingPage() {
               </Link>
             </div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
     </main>

@@ -186,7 +186,8 @@ function BotControlPanel() {
   const adminSuspendReason: string | null = (bot as any).admin_suspended_reason ?? null;
   const rentExpired = Boolean(
     !adminSuspended &&
-      (bot.status === "Suspended" ||
+      (bot.status === "Expired" ||
+        bot.status === "Suspended" ||
         bot.subscription_status === "Expired" ||
         (bot.subscription_expires_at && new Date(bot.subscription_expires_at).getTime() < Date.now())),
   );
@@ -352,6 +353,8 @@ function BotControlPanel() {
             description="Change the in-game owner username for this bot."
             updateConfigFn={updateConfigFn}
             onSuccess={invalidate}
+            locked={controlsDisabled}
+            lockReason={adminSuspended ? "Editing locked while bot is admin-suspended." : "Renew your plan to edit this bot."}
             fields={[{ key: "ownerUsername", label: "Owner username", placeholder: "OwnerName" }]}
           />
 
@@ -368,6 +371,8 @@ function BotControlPanel() {
             description="Icecast credentials embedded in config.json."
             updateConfigFn={updateConfigFn}
             onSuccess={invalidate}
+            locked={controlsDisabled}
+            lockReason={adminSuspended ? "Editing locked while bot is admin-suspended." : "Renew your plan to edit this bot."}
             fields={[
               { key: "icecastServer", label: "Icecast server" },
               { key: "icecastPort", label: "Port", type: "number" },
@@ -383,6 +388,8 @@ function BotControlPanel() {
             addAdminFn={addAdminFn}
             removeAdminFn={removeAdminFn}
             onChange={invalidate}
+            locked={controlsDisabled}
+            lockReason={adminSuspended ? "Editing locked while bot is admin-suspended." : "Renew your plan to manage admins."}
           />
 
           <SubscriptionCard
@@ -612,6 +619,8 @@ function ConfigCard({
   initial,
   updateConfigFn,
   onSuccess,
+  locked = false,
+  lockReason,
 }: {
   botId: string;
   title: string;
@@ -620,6 +629,8 @@ function ConfigCard({
   initial: Record<string, string>;
   updateConfigFn: (args: any) => Promise<any>;
   onSuccess: () => void;
+  locked?: boolean;
+  lockReason?: string;
 }) {
   const [values, setValues] = useState<Record<string, string>>(initial);
   const mutation = useMutation({
@@ -651,6 +662,11 @@ function ConfigCard({
     <div className="glass-strong rounded-3xl p-6">
       <h3 className="font-display text-lg font-semibold">{title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      {locked && lockReason && (
+        <p className="mt-3 rounded-2xl border border-rose-500/30 bg-rose-500/5 p-3 text-xs text-rose-200">
+          {lockReason}
+        </p>
+      )}
       <div className="mt-4 grid gap-3">
         {fields.map((f) => (
           <div key={f.key} className="grid gap-1.5">
@@ -661,15 +677,16 @@ function ConfigCard({
               value={values[f.key] ?? ""}
               type={f.type ?? "text"}
               placeholder={f.placeholder}
+              disabled={locked}
               onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-              className="rounded-xl border-white/10 bg-white/5"
+              className="rounded-xl border-white/10 bg-white/5 disabled:opacity-50"
             />
           </div>
         ))}
       </div>
       <Button
         onClick={handleSave}
-        disabled={mutation.isPending}
+        disabled={mutation.isPending || locked}
         className="mt-5 w-full gap-2 rounded-xl glow-primary"
       >
         {mutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
@@ -685,12 +702,16 @@ function AdminsCard({
   addAdminFn,
   removeAdminFn,
   onChange,
+  locked = false,
+  lockReason,
 }: {
   botId: string;
   admins: string[];
   addAdminFn: (args: any) => Promise<any>;
   removeAdminFn: (args: any) => Promise<any>;
   onChange: () => void;
+  locked?: boolean;
+  lockReason?: string;
 }) {
   const [username, setUsername] = useState("");
   const addM = useMutation({
@@ -719,16 +740,22 @@ function AdminsCard({
       <p className="mt-1 text-sm text-muted-foreground">
         Usernames that can issue admin commands inside the bot.
       </p>
+      {locked && lockReason && (
+        <p className="mt-3 rounded-2xl border border-rose-500/30 bg-rose-500/5 p-3 text-xs text-rose-200">
+          {lockReason}
+        </p>
+      )}
       <div className="mt-4 flex gap-2">
         <Input
           value={username}
+          disabled={locked}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="Username"
-          className="rounded-xl border-white/10 bg-white/5"
+          className="rounded-xl border-white/10 bg-white/5 disabled:opacity-50"
         />
         <Button
           onClick={() => username.trim() && addM.mutate(username.trim())}
-          disabled={addM.isPending || !username.trim()}
+          disabled={locked || addM.isPending || !username.trim()}
           className="rounded-xl"
         >
           {addM.isPending ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
@@ -746,8 +773,8 @@ function AdminsCard({
             {u}
             <button
               onClick={() => removeM.mutate(u)}
-              disabled={removeM.isPending}
-              className="grid size-6 place-items-center rounded-full bg-rose-500/20 text-rose-200 transition hover:bg-rose-500/40"
+              disabled={locked || removeM.isPending}
+              className="grid size-6 place-items-center rounded-full bg-rose-500/20 text-rose-200 transition hover:bg-rose-500/40 disabled:opacity-50"
               aria-label={`Remove ${u}`}
             >
               ×
@@ -858,10 +885,16 @@ function PlansCard({
       toast.success(`Plan activated · ${res.balanceAfter}g left`);
       qc.invalidateQueries({ queryKey: ["wallet"] });
       onChange();
+      setPending(null);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      toast.error(e.message);
+      setPending(null);
+    },
   });
   const balance = wallet?.balance ?? 0;
+  const [pending, setPending] = useState<{ duration: PlanDuration; label: string; price: number } | null>(null);
+
   return (
     <div className={`glass-strong rounded-3xl p-6 ${highlight ? "border border-amber-500/40" : ""}`}>
       <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
@@ -882,7 +915,7 @@ function PlansCard({
             <button
               key={p.duration}
               disabled={locked || !canAfford || mutation.isPending}
-              onClick={() => mutation.mutate(p.duration as PlanDuration)}
+              onClick={() => setPending({ duration: p.duration as PlanDuration, label: p.label, price: p.price })}
               className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <span className="font-medium">{p.label}</span>
@@ -891,6 +924,46 @@ function PlansCard({
           );
         })}
       </div>
+
+      <AlertDialog open={!!pending} onOpenChange={(o) => !o && !mutation.isPending && setPending(null)}>
+        <AlertDialogContent className="glass-strong border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm renewal</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p>
+                  Are you sure you want to spend{" "}
+                  <span className="font-mono font-semibold text-amber-300">{pending?.price}g</span> for{" "}
+                  <span className="font-semibold text-foreground">{pending?.label}</span> of bot rent?
+                </p>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Current balance</span>
+                    <span className="font-mono">{balance}g</span>
+                  </div>
+                  <div className="mt-1 flex justify-between">
+                    <span className="text-muted-foreground">After purchase</span>
+                    <span className="font-mono text-emerald-300">{balance - (pending?.price ?? 0)}g</span>
+                  </div>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-full" disabled={mutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={mutation.isPending}
+              onClick={() => pending && mutation.mutate(pending.duration)}
+              className="rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90"
+            >
+              {mutation.isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+              Confirm — Pay {pending?.price}g
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
