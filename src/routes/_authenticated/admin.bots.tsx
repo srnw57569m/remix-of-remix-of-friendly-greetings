@@ -226,6 +226,42 @@ function AdminBots() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={suspendTarget !== null} onOpenChange={(o) => !o && setSuspendTarget(null)}>
+        <DialogContent className="glass-strong border-white/10 sm:rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Suspend bot</DialogTitle>
+            <DialogDescription>
+              The reason will be shown to <span className="font-mono text-foreground">{suspendTarget?.name}</span>'s
+              owner. They won't be able to start, stop, or renew while suspended.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Reason (required)</Label>
+            <Textarea
+              value={suspendReason}
+              onChange={(e) => setSuspendReason(e.target.value)}
+              placeholder="e.g. Terms of service violation — abusive content."
+              rows={4}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setSuspendTarget(null)} disabled={statusMut.isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() =>
+                suspendTarget &&
+                statusMut.mutate({ botId: suspendTarget.id, action: "suspend", reason: suspendReason.trim() })
+              }
+              disabled={statusMut.isPending || suspendReason.trim().length < 3}
+            >
+              {statusMut.isPending ? "Suspending…" : "Suspend bot"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
