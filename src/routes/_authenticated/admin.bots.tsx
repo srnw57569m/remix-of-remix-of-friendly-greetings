@@ -130,9 +130,28 @@ function AdminBots() {
                     <Button size="icon" variant="ghost" title="Restart" onClick={() => statusMut.mutate({ botId: b.id, action: "restart" })}>
                       <RotateCw className="h-4 w-4 text-sky-400" />
                     </Button>
-                    <Button size="icon" variant="ghost" title="Suspend" onClick={() => statusMut.mutate({ botId: b.id, action: "suspend" })}>
-                      <Pause className="h-4 w-4 text-amber-400" />
-                    </Button>
+                    {b.admin_suspended ? (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title="Unsuspend (lift admin suspension)"
+                        onClick={() => statusMut.mutate({ botId: b.id, action: "unsuspend" })}
+                      >
+                        <PlayCircle className="h-4 w-4 text-emerald-400" />
+                      </Button>
+                    ) : (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title="Suspend (requires reason)"
+                        onClick={() => {
+                          setSuspendReason("");
+                          setSuspendTarget({ id: b.id, name: b.bot_name });
+                        }}
+                      >
+                        <Pause className="h-4 w-4 text-amber-400" />
+                      </Button>
+                    )}
                     <Button
                       size="icon"
                       variant="ghost"
