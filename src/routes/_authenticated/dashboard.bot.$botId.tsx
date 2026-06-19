@@ -740,16 +740,22 @@ function AdminsCard({
       <p className="mt-1 text-sm text-muted-foreground">
         Usernames that can issue admin commands inside the bot.
       </p>
+      {locked && lockReason && (
+        <p className="mt-3 rounded-2xl border border-rose-500/30 bg-rose-500/5 p-3 text-xs text-rose-200">
+          {lockReason}
+        </p>
+      )}
       <div className="mt-4 flex gap-2">
         <Input
           value={username}
+          disabled={locked}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="Username"
-          className="rounded-xl border-white/10 bg-white/5"
+          className="rounded-xl border-white/10 bg-white/5 disabled:opacity-50"
         />
         <Button
           onClick={() => username.trim() && addM.mutate(username.trim())}
-          disabled={addM.isPending || !username.trim()}
+          disabled={locked || addM.isPending || !username.trim()}
           className="rounded-xl"
         >
           {addM.isPending ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
@@ -767,8 +773,8 @@ function AdminsCard({
             {u}
             <button
               onClick={() => removeM.mutate(u)}
-              disabled={removeM.isPending}
-              className="grid size-6 place-items-center rounded-full bg-rose-500/20 text-rose-200 transition hover:bg-rose-500/40"
+              disabled={locked || removeM.isPending}
+              className="grid size-6 place-items-center rounded-full bg-rose-500/20 text-rose-200 transition hover:bg-rose-500/40 disabled:opacity-50"
               aria-label={`Remove ${u}`}
             >
               ×
