@@ -36,13 +36,18 @@ function AdminBots() {
   const setStatus = useServerFn(adminSetBotStatus);
   const del = useServerFn(adminDeleteBot);
   const statusMut = useMutation({
-    mutationFn: (v: { botId: string; action: "start" | "stop" | "restart" | "suspend" }) => setStatus({ data: v }),
+    mutationFn: (v: { botId: string; action: "start" | "stop" | "restart" | "suspend" | "unsuspend"; reason?: string }) =>
+      setStatus({ data: v }),
     onSuccess: () => {
       toast.success("Bot updated");
       qc.invalidateQueries({ queryKey: ["admin"] });
+      setSuspendTarget(null);
+      setSuspendReason("");
     },
     onError: (e: any) => toast.error(e.message),
   });
+  const [suspendTarget, setSuspendTarget] = useState<{ id: string; name: string } | null>(null);
+  const [suspendReason, setSuspendReason] = useState("");
   const delMut = useMutation({
     mutationFn: (botId: string) => del({ data: { botId } }),
     onSuccess: () => {
