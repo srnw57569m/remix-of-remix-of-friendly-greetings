@@ -301,6 +301,7 @@ export const setBotStatus = createServerFn({ method: "POST" })
     }
     const subExpired =
       owned.subscription_status === "Expired" ||
+      owned.status === "Expired" ||
       owned.status === "Suspended" ||
       (owned.subscription_expires_at && new Date(owned.subscription_expires_at as string).getTime() < Date.now());
     if (subExpired) {
