@@ -14,6 +14,7 @@ import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ThemeProvider, useTheme } from "@/hooks/useTheme";
 import { Navbar } from "@/components/Navbar";
 
 function NotFoundComponent() {
@@ -135,16 +136,23 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <div className="flex min-h-screen flex-col">
-          <Navbar />
-          <div className="flex-1">
-            <Outlet />
+      <ThemeProvider>
+        <AuthProvider>
+          <div className="flex min-h-screen flex-col">
+            <Navbar />
+            <div className="flex-1">
+              <Outlet />
+            </div>
+            <Footer />
           </div>
-          <Footer />
-        </div>
-        <Toaster theme="dark" position="top-right" richColors />
-      </AuthProvider>
+          <ThemedToaster />
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+function ThemedToaster() {
+  const { theme } = useTheme();
+  return <Toaster theme={theme} position="top-right" richColors />;
 }
