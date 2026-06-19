@@ -98,6 +98,9 @@ export const purchaseBotPlan = createServerFn({ method: "POST" })
           }
         }
         await supabaseAdmin.from("bots").update({ status: "Online" }).eq("id", data.botId);
+      } else {
+        // No agent configured — at least lift the Suspended status so the user can use the bot again
+        await supabaseAdmin.from("bots").update({ status: "Offline" }).eq("id", data.botId);
       }
     } catch {
       // non-fatal
@@ -180,6 +183,16 @@ export const startFreeTrial = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: botRow } = await supabaseAdmin
+      .from("bots")
+      .select("admin_suspended, admin_suspended_reason, user_id")
+      .eq("id", data.botId).maybeSingle();
+    if (!botRow || botRow.user_id !== userId) throw new Error("Bot not found");
+    if (botRow.admin_suspended) {
+      throw new Error(
+        `Bot is suspended by admin${botRow.admin_suspended_reason ? `: ${botRow.admin_suspended_reason}` : ""}.`,
+      );
+    }
     const { data: result, error } = await supabaseAdmin.rpc("start_free_trial", {
       _user_id: userId,
       _bot_id: data.botId,
