@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Sparkles, Wand2, Shield, LayoutDashboard, Settings2 } from "lucide-react";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { useRef } from "react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 export const Route = createFileRoute("/")({
@@ -56,13 +58,25 @@ const features = [
 ];
 
 function LandingPage() {
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+  const heroY = useTransform(scrollYProgress, [0, 1], [0, 180]);
+  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.92]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0.3]);
+
   return (
-    <main className="relative">
+    <main className="relative" style={{ perspective: 1200 }}>
       {/* ===== HERO ===== */}
-      <section className="relative isolate min-h-screen overflow-hidden pt-40 pb-24 sm:pt-44">
+      <section ref={heroRef} className="relative isolate min-h-screen overflow-hidden pt-40 pb-24 sm:pt-44">
         <AnimatedBackground />
 
-        <div className="mx-auto max-w-5xl px-6 text-center animate-fade-up">
+        <motion.div
+          style={{ y: heroY, scale: heroScale, opacity: heroOpacity }}
+          className="mx-auto max-w-5xl px-6 text-center"
+        >
           <div className="glass mx-auto inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs text-muted-foreground">
             <Sparkles className="h-3.5 w-3.5 text-accent" />
             <span>Powered by next-gen music engines</span>
