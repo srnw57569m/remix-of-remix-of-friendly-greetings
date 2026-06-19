@@ -185,6 +185,29 @@ export const createBot = createServerFn({ method: "POST" })
 
 const idInput = z.object({ botId: z.string().uuid() });
 
+/** Throws when the bot can't be edited (admin-suspended or rent expired). */
+function assertBotEditable(bot: {
+  status?: string | null;
+  admin_suspended?: boolean | null;
+  admin_suspended_reason?: string | null;
+  subscription_status?: string | null;
+  subscription_expires_at?: string | null;
+}) {
+  if (bot.admin_suspended) {
+    throw new Error(
+      `Bot is suspended by admin${bot.admin_suspended_reason ? `: ${bot.admin_suspended_reason}` : ""}. Editing is locked.`,
+    );
+  }
+  const expired =
+    bot.subscription_status === "Expired" ||
+    bot.status === "Expired" ||
+    bot.status === "Suspended" ||
+    (bot.subscription_expires_at && new Date(bot.subscription_expires_at).getTime() < Date.now());
+  if (expired) {
+    throw new Error("Rent time finished. Renew a plan to edit this bot again.");
+  }
+}
+
 async function logActivity(
   supabase: any,
   userId: string,
@@ -356,12 +379,13 @@ export const updateBotConfig = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: bot, error: loadErr } = await supabase
       .from("bots")
-      .select("id, user_id, storage_path, admins")
+      .select("id, user_id, storage_path, admins, status, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
       .eq("id", data.botId)
       .eq("user_id", userId)
       .maybeSingle();
     if (loadErr) throw new Error(loadErr.message);
     if (!bot) throw new Error("Bot not found");
+    assertBotEditable(bot as any);
 
     const dbPatch: TablesUpdate<"bots"> = {};
     if (data.ownerUsername !== undefined) dbPatch.owner_username = data.ownerUsername;
