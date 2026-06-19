@@ -394,7 +394,7 @@ function BotControlPanel() {
             canManage={isAdmin}
           />
 
-          <PlansCard botId={botId} onChange={invalidate} />
+          <PlansCard botId={botId} onChange={invalidate} locked={adminSuspended} highlight={rentExpired} />
         </div>
 
         {/* Activity */}
@@ -829,7 +829,17 @@ function SubscriptionCard({
   );
 }
 
-function PlansCard({ botId, onChange }: { botId: string; onChange: () => void }) {
+function PlansCard({
+  botId,
+  onChange,
+  locked = false,
+  highlight = false,
+}: {
+  botId: string;
+  onChange: () => void;
+  locked?: boolean;
+  highlight?: boolean;
+}) {
   const qc = useQueryClient();
   const getWalletFn = useServerFn(getWallet);
   const purchaseFn = useServerFn(purchaseBotPlan);
@@ -853,22 +863,27 @@ function PlansCard({ botId, onChange }: { botId: string; onChange: () => void })
   });
   const balance = wallet?.balance ?? 0;
   return (
-    <div className="glass-strong rounded-3xl p-6">
+    <div className={`glass-strong rounded-3xl p-6 ${highlight ? "border border-amber-500/40" : ""}`}>
       <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
-        <Timer className="size-4 text-accent" /> Rent this bot
+        <Timer className="size-4 text-accent" /> {highlight ? "Renew to resume bot" : "Rent this bot"}
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">
         Pay with in-game gold. Wallet balance: <span className="font-mono text-foreground">{balance}g</span>
       </p>
+      {locked && (
+        <p className="mt-3 rounded-2xl border border-rose-500/30 bg-rose-500/5 p-3 text-xs text-rose-200">
+          Renewals are disabled while the bot is suspended by an administrator.
+        </p>
+      )}
       <div className="mt-4 grid gap-2">
         {(plans ?? []).map((p) => {
           const canAfford = balance >= p.price;
           return (
             <button
               key={p.duration}
-              disabled={!canAfford || mutation.isPending}
+              disabled={locked || !canAfford || mutation.isPending}
               onClick={() => mutation.mutate(p.duration as PlanDuration)}
-              className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm transition hover:bg-white/10 disabled:opacity-40"
+              className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <span className="font-medium">{p.label}</span>
               <span className="font-mono text-xs text-accent">{p.price}g</span>
