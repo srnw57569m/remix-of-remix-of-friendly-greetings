@@ -400,12 +400,14 @@ function BotControlPanel() {
 function PrimaryAction({
   onClick,
   loading,
+  disabled,
   icon,
   label,
   tone,
 }: {
   onClick: () => void;
   loading: boolean;
+  disabled?: boolean;
   icon: React.ReactNode;
   label: string;
   tone: "default" | "success" | "danger";
@@ -418,8 +420,8 @@ function PrimaryAction({
   return (
     <button
       onClick={onClick}
-      disabled={loading}
-      className={`group inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-gradient-to-br ${cls} px-4 text-sm font-medium text-foreground transition-all hover:scale-[1.03] disabled:opacity-60`}
+      disabled={loading || disabled}
+      className={`group inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-gradient-to-br ${cls} px-4 text-sm font-medium text-foreground transition-all hover:scale-[1.03] disabled:cursor-not-allowed disabled:opacity-50`}
     >
       {loading ? <Loader2 className="size-4 animate-spin" /> : icon}
       {label}
