@@ -51,6 +51,9 @@ export type Database = {
       }
       bots: {
         Row: {
+          admin_suspended: boolean
+          admin_suspended_at: string | null
+          admin_suspended_reason: string | null
           admins: Json
           bot_index: number
           bot_name: string
@@ -74,6 +77,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          admin_suspended?: boolean
+          admin_suspended_at?: string | null
+          admin_suspended_reason?: string | null
           admins?: Json
           bot_index: number
           bot_name: string
@@ -97,6 +103,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          admin_suspended?: boolean
+          admin_suspended_at?: string | null
+          admin_suspended_reason?: string | null
           admins?: Json
           bot_index?: number
           bot_name?: string
