@@ -1,7 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Music2, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
+import { BeatlyLogo } from "@/components/BeatlyLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const publicLinks = [
   { to: "/", label: "Home" },
@@ -31,14 +33,11 @@ export function Navbar() {
           scrolled ? "shadow-[0_10px_40px_-10px_oklch(0_0_0/0.6)]" : ""
         }`}
       >
-        <Link to="/" className="flex items-center gap-2 pl-3">
-          <div className="relative">
-            <div className="absolute inset-0 rounded-full bg-primary blur-md opacity-60" />
-            <div className="relative grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-primary to-accent">
-              <Music2 className="h-4 w-4 text-primary-foreground" />
-            </div>
-          </div>
-          <span className="font-display text-lg font-semibold tracking-tight">BeatlY</span>
+        <Link to="/" className="flex items-center gap-2 pl-2">
+          <BeatlyLogo size={32} />
+          <span className="font-display text-lg font-semibold tracking-tight">
+            Beatl<span className="text-gradient">Y</span>
+          </span>
         </Link>
 
         <ul className="hidden items-center gap-1 md:flex">
@@ -100,6 +99,8 @@ export function Navbar() {
         </ul>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
+
           {user ? (
             <button
               onClick={signOut}
