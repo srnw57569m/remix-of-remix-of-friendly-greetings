@@ -182,6 +182,16 @@ function BotControlPanel() {
     : "—";
   const admins: string[] = Array.isArray(bot.admins) ? (bot.admins as string[]) : [];
 
+  const adminSuspended = Boolean((bot as any).admin_suspended);
+  const adminSuspendReason: string | null = (bot as any).admin_suspended_reason ?? null;
+  const rentExpired = Boolean(
+    !adminSuspended &&
+      (bot.status === "Suspended" ||
+        bot.subscription_status === "Expired" ||
+        (bot.subscription_expires_at && new Date(bot.subscription_expires_at).getTime() < Date.now())),
+  );
+  const controlsDisabled = adminSuspended || rentExpired;
+
   return (
     <main className="relative min-h-screen overflow-hidden pt-28 pb-24">
       <AnimatedBackground />
@@ -215,6 +225,7 @@ function BotControlPanel() {
               <PrimaryAction
                 onClick={() => statusMutation.mutate("start")}
                 loading={statusMutation.isPending && statusMutation.variables === "start"}
+                disabled={controlsDisabled}
                 icon={<Play className="size-4" />}
                 label="Start"
                 tone="success"
@@ -222,6 +233,7 @@ function BotControlPanel() {
               <PrimaryAction
                 onClick={() => statusMutation.mutate("stop")}
                 loading={statusMutation.isPending && statusMutation.variables === "stop"}
+                disabled={controlsDisabled}
                 icon={<Power className="size-4" />}
                 label="Stop"
                 tone="danger"
@@ -229,6 +241,7 @@ function BotControlPanel() {
               <PrimaryAction
                 onClick={() => statusMutation.mutate("restart")}
                 loading={statusMutation.isPending && statusMutation.variables === "restart"}
+                disabled={controlsDisabled}
                 icon={<RotateCcw className="size-4" />}
                 label="Restart"
                 tone="default"
@@ -257,6 +270,47 @@ function BotControlPanel() {
             <Info label="Expires" value={expires} />
           </dl>
         </motion.div>
+
+        {adminSuspended && (
+          <div className="glass-strong mt-6 rounded-3xl border border-rose-500/40 p-6">
+            <div className="flex items-start gap-3">
+              <TriangleAlert className="mt-0.5 size-5 text-rose-300" />
+              <div>
+                <h3 className="font-display text-lg font-semibold text-rose-300">
+                  Bot suspended by administrator
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  You cannot start, stop, or renew this bot until an admin lifts the suspension.
+                </p>
+                {adminSuspendReason && (
+                  <p className="mt-3 rounded-2xl border border-rose-500/30 bg-rose-500/5 p-3 text-sm">
+                    <span className="font-semibold text-rose-200">Reason: </span>
+                    <span className="text-foreground">{adminSuspendReason}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {rentExpired && (
+          <div className="glass-strong mt-6 rounded-3xl border border-amber-500/40 p-6">
+            <div className="flex items-start gap-3">
+              <Timer className="mt-0.5 size-5 text-amber-300" />
+              <div>
+                <h3 className="font-display text-lg font-semibold text-amber-200">
+                  Rent time finished
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Your bot has been suspended because the subscription expired. Pick a plan below
+                  with your gold to renew and bring it back online — your configuration is kept.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+
 
         {/* Monitoring + Console */}
         <section className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -340,7 +394,7 @@ function BotControlPanel() {
             canManage={isAdmin}
           />
 
-          <PlansCard botId={botId} onChange={invalidate} />
+          <PlansCard botId={botId} onChange={invalidate} locked={adminSuspended} highlight={rentExpired} />
         </div>
 
         {/* Activity */}
@@ -388,12 +442,14 @@ function BotControlPanel() {
 function PrimaryAction({
   onClick,
   loading,
+  disabled,
   icon,
   label,
   tone,
 }: {
   onClick: () => void;
   loading: boolean;
+  disabled?: boolean;
   icon: React.ReactNode;
   label: string;
   tone: "default" | "success" | "danger";
@@ -406,8 +462,8 @@ function PrimaryAction({
   return (
     <button
       onClick={onClick}
-      disabled={loading}
-      className={`group inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-gradient-to-br ${cls} px-4 text-sm font-medium text-foreground transition-all hover:scale-[1.03] disabled:opacity-60`}
+      disabled={loading || disabled}
+      className={`group inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-gradient-to-br ${cls} px-4 text-sm font-medium text-foreground transition-all hover:scale-[1.03] disabled:cursor-not-allowed disabled:opacity-50`}
     >
       {loading ? <Loader2 className="size-4 animate-spin" /> : icon}
       {label}
@@ -773,7 +829,17 @@ function SubscriptionCard({
   );
 }
 
-function PlansCard({ botId, onChange }: { botId: string; onChange: () => void }) {
+function PlansCard({
+  botId,
+  onChange,
+  locked = false,
+  highlight = false,
+}: {
+  botId: string;
+  onChange: () => void;
+  locked?: boolean;
+  highlight?: boolean;
+}) {
   const qc = useQueryClient();
   const getWalletFn = useServerFn(getWallet);
   const purchaseFn = useServerFn(purchaseBotPlan);
@@ -797,22 +863,27 @@ function PlansCard({ botId, onChange }: { botId: string; onChange: () => void })
   });
   const balance = wallet?.balance ?? 0;
   return (
-    <div className="glass-strong rounded-3xl p-6">
+    <div className={`glass-strong rounded-3xl p-6 ${highlight ? "border border-amber-500/40" : ""}`}>
       <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
-        <Timer className="size-4 text-accent" /> Rent this bot
+        <Timer className="size-4 text-accent" /> {highlight ? "Renew to resume bot" : "Rent this bot"}
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">
         Pay with in-game gold. Wallet balance: <span className="font-mono text-foreground">{balance}g</span>
       </p>
+      {locked && (
+        <p className="mt-3 rounded-2xl border border-rose-500/30 bg-rose-500/5 p-3 text-xs text-rose-200">
+          Renewals are disabled while the bot is suspended by an administrator.
+        </p>
+      )}
       <div className="mt-4 grid gap-2">
         {(plans ?? []).map((p) => {
           const canAfford = balance >= p.price;
           return (
             <button
               key={p.duration}
-              disabled={!canAfford || mutation.isPending}
+              disabled={locked || !canAfford || mutation.isPending}
               onClick={() => mutation.mutate(p.duration as PlanDuration)}
-              className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm transition hover:bg-white/10 disabled:opacity-40"
+              className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <span className="font-medium">{p.label}</span>
               <span className="font-mono text-xs text-accent">{p.price}g</span>

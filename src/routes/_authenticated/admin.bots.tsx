@@ -2,8 +2,9 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Play, Square, RotateCw, Pause, Trash2, Search, Clock } from "lucide-react";
+import { Play, Square, RotateCw, Pause, PlayCircle, Trash2, Search, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
 import { listAllBots, adminSetBotStatus, adminDeleteBot } from "@/lib/admin.functions";
 import { adminGrantBotTime } from "@/lib/wallet.functions";
 import { Input } from "@/components/ui/input";
@@ -35,13 +36,18 @@ function AdminBots() {
   const setStatus = useServerFn(adminSetBotStatus);
   const del = useServerFn(adminDeleteBot);
   const statusMut = useMutation({
-    mutationFn: (v: { botId: string; action: "start" | "stop" | "restart" | "suspend" }) => setStatus({ data: v }),
+    mutationFn: (v: { botId: string; action: "start" | "stop" | "restart" | "suspend" | "unsuspend"; reason?: string }) =>
+      setStatus({ data: v }),
     onSuccess: () => {
       toast.success("Bot updated");
       qc.invalidateQueries({ queryKey: ["admin"] });
+      setSuspendTarget(null);
+      setSuspendReason("");
     },
     onError: (e: any) => toast.error(e.message),
   });
+  const [suspendTarget, setSuspendTarget] = useState<{ id: string; name: string } | null>(null);
+  const [suspendReason, setSuspendReason] = useState("");
   const delMut = useMutation({
     mutationFn: (botId: string) => del({ data: { botId } }),
     onSuccess: () => {
@@ -124,9 +130,28 @@ function AdminBots() {
                     <Button size="icon" variant="ghost" title="Restart" onClick={() => statusMut.mutate({ botId: b.id, action: "restart" })}>
                       <RotateCw className="h-4 w-4 text-sky-400" />
                     </Button>
-                    <Button size="icon" variant="ghost" title="Suspend" onClick={() => statusMut.mutate({ botId: b.id, action: "suspend" })}>
-                      <Pause className="h-4 w-4 text-amber-400" />
-                    </Button>
+                    {b.admin_suspended ? (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title="Unsuspend (lift admin suspension)"
+                        onClick={() => statusMut.mutate({ botId: b.id, action: "unsuspend" })}
+                      >
+                        <PlayCircle className="h-4 w-4 text-emerald-400" />
+                      </Button>
+                    ) : (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title="Suspend (requires reason)"
+                        onClick={() => {
+                          setSuspendReason("");
+                          setSuspendTarget({ id: b.id, name: b.bot_name });
+                        }}
+                      >
+                        <Pause className="h-4 w-4 text-amber-400" />
+                      </Button>
+                    )}
                     <Button
                       size="icon"
                       variant="ghost"
@@ -197,6 +222,42 @@ function AdminBots() {
               className="glow-primary"
             >
               {grantMut.isPending ? "Granting…" : `Grant ${grantHours}h`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={suspendTarget !== null} onOpenChange={(o) => !o && setSuspendTarget(null)}>
+        <DialogContent className="glass-strong border-white/10 sm:rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Suspend bot</DialogTitle>
+            <DialogDescription>
+              The reason will be shown to <span className="font-mono text-foreground">{suspendTarget?.name}</span>'s
+              owner. They won't be able to start, stop, or renew while suspended.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Reason (required)</Label>
+            <Textarea
+              value={suspendReason}
+              onChange={(e) => setSuspendReason(e.target.value)}
+              placeholder="e.g. Terms of service violation — abusive content."
+              rows={4}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setSuspendTarget(null)} disabled={statusMut.isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() =>
+                suspendTarget &&
+                statusMut.mutate({ botId: suspendTarget.id, action: "suspend", reason: suspendReason.trim() })
+              }
+              disabled={statusMut.isPending || suspendReason.trim().length < 3}
+            >
+              {statusMut.isPending ? "Suspending…" : "Suspend bot"}
             </Button>
           </DialogFooter>
         </DialogContent>
