@@ -184,11 +184,12 @@ function BotControlPanel() {
 
   const adminSuspended = Boolean((bot as any).admin_suspended);
   const adminSuspendReason: string | null = (bot as any).admin_suspended_reason ?? null;
-  const rentExpired =
+  const rentExpired = Boolean(
     !adminSuspended &&
-    (bot.status === "Suspended" ||
-      bot.subscription_status === "Expired" ||
-      (bot.subscription_expires_at && new Date(bot.subscription_expires_at).getTime() < Date.now()));
+      (bot.status === "Suspended" ||
+        bot.subscription_status === "Expired" ||
+        (bot.subscription_expires_at && new Date(bot.subscription_expires_at).getTime() < Date.now())),
+  );
   const controlsDisabled = adminSuspended || rentExpired;
 
   return (
