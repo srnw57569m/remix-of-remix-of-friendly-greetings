@@ -207,7 +207,7 @@ export const listBots = createServerFn({ method: "GET" })
     const { data, error } = await supabase
       .from("bots")
       .select(
-        "id, bot_name, bot_index, status, owner_username, created_at, updated_at, last_restart_at, subscription_status, subscription_expires_at, admins, icecast_server, icecast_port, mount_point, icecast_username, room_id, storage_path",
+        "id, bot_name, bot_index, status, owner_username, created_at, updated_at, last_restart_at, subscription_status, subscription_expires_at, admins, icecast_server, icecast_port, mount_point, icecast_username, room_id, storage_path, admin_suspended, admin_suspended_reason, admin_suspended_at",
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
@@ -264,11 +264,25 @@ export const setBotStatus = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Verify ownership first
+    // Verify ownership and check suspension state
     const { data: owned, error: ownErr } = await supabase
-      .from("bots").select("id").eq("id", data.botId).eq("user_id", userId).maybeSingle();
+      .from("bots")
+      .select("id, status, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
+      .eq("id", data.botId).eq("user_id", userId).maybeSingle();
     if (ownErr) throw new Error(ownErr.message);
     if (!owned) throw new Error("Bot not found");
+    if (owned.admin_suspended) {
+      throw new Error(
+        `Bot is suspended by admin${owned.admin_suspended_reason ? `: ${owned.admin_suspended_reason}` : ""}. Contact support.`,
+      );
+    }
+    const subExpired =
+      owned.subscription_status === "Expired" ||
+      owned.status === "Suspended" ||
+      (owned.subscription_expires_at && new Date(owned.subscription_expires_at as string).getTime() < Date.now());
+    if (subExpired) {
+      throw new Error("Rent time finished. Renew a plan to use this bot again.");
+    }
 
     // Call the VPS agent if configured
     const { agent, isAgentConfigured, buildBotConfig } = await loadAgent();

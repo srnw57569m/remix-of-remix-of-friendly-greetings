@@ -49,18 +49,17 @@ export const Route = createFileRoute("/api/public/cron/expire-bots")({
         for (const bot of list) {
           let err: string | null = null;
           if (agentReady) {
-            try { await agent.stop(bot.id); } catch (e) { /* ignore stop errors */ }
-            try { await agent.delete(bot.id); } catch (e) { err = (e as Error).message; }
+            try { await agent.stop(bot.id); } catch (e) { err = (e as Error).message; }
           }
           await supabaseAdmin.from("bots").update({
             subscription_status: "Expired",
-            status: "Offline",
+            status: "Suspended",
           }).eq("id", bot.id);
           await supabaseAdmin.from("activity_logs").insert({
             user_id: bot.user_id,
             bot_id: bot.id,
             action: "bot_expired",
-            detail: err ? `agent error: ${err}` : null,
+            detail: err ? `agent error: ${err}` : "rent time finished — bot suspended, renew to resume",
           });
           results.push({ id: bot.id, ok: !err, error: err ?? undefined });
         }
