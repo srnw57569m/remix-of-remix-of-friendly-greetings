@@ -134,37 +134,48 @@ function LandingPage() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* ===== FEATURES ===== */}
       <section id="features" className="relative py-32">
         <div className="mx-auto max-w-6xl px-6">
-          <div className="mx-auto max-w-2xl text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="mx-auto max-w-2xl text-center"
+          >
             <h2 className="font-display text-4xl font-bold sm:text-5xl">
               Everything you need to <span className="text-gradient">go live</span>
             </h2>
             <p className="mt-4 text-muted-foreground">
               A premium platform that takes care of the heavy lifting so you can focus on the vibe.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4" style={{ perspective: 1000 }}>
             {features.map((f, i) => (
-              <div
+              <motion.div
                 key={f.title}
-                className="group relative animate-fade-up"
-                style={{ animationDelay: `${i * 0.08}s` }}
+                initial={{ opacity: 0, y: 60, rotateX: -15 }}
+                whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.6, delay: i * 0.1, ease: [0.21, 0.47, 0.32, 0.98] }}
+                whileHover={{ y: -8, rotateX: 4, rotateY: -4, transition: { duration: 0.3 } }}
+                className="group relative"
+                style={{ transformStyle: "preserve-3d" }}
               >
                 <div className="absolute -inset-px rounded-3xl bg-gradient-to-br from-primary/40 to-accent/40 opacity-0 blur transition-opacity duration-500 group-hover:opacity-100" />
-                <div className="glass-strong relative h-full rounded-3xl p-6 transition-transform duration-500 group-hover:-translate-y-1">
+                <div className="glass-strong relative h-full rounded-3xl p-6">
                   <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-[0_8px_30px_-8px_oklch(0.62_0.22_250/0.7)]">
                     <f.icon className="h-6 w-6 text-primary-foreground" />
                   </div>
                   <h3 className="mt-5 font-display text-xl font-semibold">{f.title}</h3>
                   <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -172,7 +183,13 @@ function LandingPage() {
 
       {/* ===== PRICING TEASER ===== */}
       <section id="pricing" className="relative py-32">
-        <div className="mx-auto max-w-4xl px-6 text-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.92, y: 50 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: true, margin: "-120px" }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="mx-auto max-w-4xl px-6 text-center"
+        >
           <div className="glass-strong relative overflow-hidden rounded-3xl p-12">
             <div className="absolute inset-0 bg-hero opacity-50" />
             <div className="relative">
@@ -194,7 +211,7 @@ function LandingPage() {
               </Link>
             </div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
     </main>
