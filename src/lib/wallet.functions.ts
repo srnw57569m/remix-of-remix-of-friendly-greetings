@@ -50,6 +50,18 @@ export const purchaseBotPlan = createServerFn({ method: "POST" })
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    // Block renewals on admin-suspended bots
+    const { data: botRow } = await supabaseAdmin
+      .from("bots")
+      .select("admin_suspended, admin_suspended_reason, user_id")
+      .eq("id", data.botId).maybeSingle();
+    if (!botRow || botRow.user_id !== userId) throw new Error("Bot not found");
+    if (botRow.admin_suspended) {
+      throw new Error(
+        `Bot is suspended by admin${botRow.admin_suspended_reason ? `: ${botRow.admin_suspended_reason}` : ""}. You can't renew until an admin lifts the suspension.`,
+      );
+    }
+
     const { data: plan, error: planErr } = await supabaseAdmin
       .from("plan_prices")
       .select("price, interval_sql")
