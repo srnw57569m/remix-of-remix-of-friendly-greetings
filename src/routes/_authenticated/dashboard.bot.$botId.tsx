@@ -965,7 +965,6 @@ function PlansCard({
         </AlertDialogContent>
       </AlertDialog>
     </div>
-    </div>
   );
 }
 
