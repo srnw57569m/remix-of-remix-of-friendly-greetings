@@ -140,53 +140,71 @@ function LoginForm() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const parsed = loginSchema.safeParse({
-      identifier: fd.get("identifier"),
-      password: fd.get("password"),
-    });
+    if (loading) return;
+    const parsed = loginSchema.safeParse({ identifier, password });
     if (!parsed.success) {
       const errs: Record<string, string> = {};
       parsed.error.issues.forEach((i) => (errs[i.path[0] as string] = i.message));
       setErrors(errs);
+      toast.error(Object.values(errs)[0] ?? "Please fill in your email and password.");
       return;
     }
     setErrors({});
-    setLoading(true);
 
     let email = parsed.data.identifier;
-    // If user typed a username, resolve via RPC-less lookup is not possible (RLS).
-    // Recommend signing in with email; otherwise treat as email.
     if (!email.includes("@")) {
       toast.error("Please sign in with your email address.");
-      setLoading(false);
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password: parsed.data.password,
-    });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password: parsed.data.password,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Welcome back!");
+      navigate({ to: "/", replace: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Login failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    toast.success("Welcome back!");
-    navigate({ to: "/" });
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-4" noValidate>
       <Field label="Email" error={errors.identifier}>
-        <input name="identifier" type="email" autoComplete="email" placeholder="you@domain.com" className={inputCls} />
+        <input
+          name="identifier"
+          type="email"
+          autoComplete="email"
+          placeholder="you@domain.com"
+          className={inputCls}
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+        />
       </Field>
       <Field label="Password" error={errors.password}>
         <div className="relative">
-          <input name="password" type={showPw ? "text" : "password"} autoComplete="current-password" placeholder="••••••••" className={inputCls + " pr-11"} />
+          <input
+            name="password"
+            type={showPw ? "text" : "password"}
+            autoComplete="current-password"
+            placeholder="••••••••"
+            className={inputCls + " pr-11"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
           <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
             {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
