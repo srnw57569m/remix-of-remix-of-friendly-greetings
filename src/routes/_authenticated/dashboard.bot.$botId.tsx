@@ -619,6 +619,8 @@ function ConfigCard({
   initial,
   updateConfigFn,
   onSuccess,
+  locked = false,
+  lockReason,
 }: {
   botId: string;
   title: string;
@@ -627,6 +629,8 @@ function ConfigCard({
   initial: Record<string, string>;
   updateConfigFn: (args: any) => Promise<any>;
   onSuccess: () => void;
+  locked?: boolean;
+  lockReason?: string;
 }) {
   const [values, setValues] = useState<Record<string, string>>(initial);
   const mutation = useMutation({
@@ -658,6 +662,11 @@ function ConfigCard({
     <div className="glass-strong rounded-3xl p-6">
       <h3 className="font-display text-lg font-semibold">{title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      {locked && lockReason && (
+        <p className="mt-3 rounded-2xl border border-rose-500/30 bg-rose-500/5 p-3 text-xs text-rose-200">
+          {lockReason}
+        </p>
+      )}
       <div className="mt-4 grid gap-3">
         {fields.map((f) => (
           <div key={f.key} className="grid gap-1.5">
@@ -668,15 +677,16 @@ function ConfigCard({
               value={values[f.key] ?? ""}
               type={f.type ?? "text"}
               placeholder={f.placeholder}
+              disabled={locked}
               onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-              className="rounded-xl border-white/10 bg-white/5"
+              className="rounded-xl border-white/10 bg-white/5 disabled:opacity-50"
             />
           </div>
         ))}
       </div>
       <Button
         onClick={handleSave}
-        disabled={mutation.isPending}
+        disabled={mutation.isPending || locked}
         className="mt-5 w-full gap-2 rounded-xl glow-primary"
       >
         {mutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
@@ -692,12 +702,16 @@ function AdminsCard({
   addAdminFn,
   removeAdminFn,
   onChange,
+  locked = false,
+  lockReason,
 }: {
   botId: string;
   admins: string[];
   addAdminFn: (args: any) => Promise<any>;
   removeAdminFn: (args: any) => Promise<any>;
   onChange: () => void;
+  locked?: boolean;
+  lockReason?: string;
 }) {
   const [username, setUsername] = useState("");
   const addM = useMutation({
