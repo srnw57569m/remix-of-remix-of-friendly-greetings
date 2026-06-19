@@ -271,6 +271,47 @@ function BotControlPanel() {
           </dl>
         </motion.div>
 
+        {adminSuspended && (
+          <div className="glass-strong mt-6 rounded-3xl border border-rose-500/40 p-6">
+            <div className="flex items-start gap-3">
+              <TriangleAlert className="mt-0.5 size-5 text-rose-300" />
+              <div>
+                <h3 className="font-display text-lg font-semibold text-rose-300">
+                  Bot suspended by administrator
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  You cannot start, stop, or renew this bot until an admin lifts the suspension.
+                </p>
+                {adminSuspendReason && (
+                  <p className="mt-3 rounded-2xl border border-rose-500/30 bg-rose-500/5 p-3 text-sm">
+                    <span className="font-semibold text-rose-200">Reason: </span>
+                    <span className="text-foreground">{adminSuspendReason}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {rentExpired && (
+          <div className="glass-strong mt-6 rounded-3xl border border-amber-500/40 p-6">
+            <div className="flex items-start gap-3">
+              <Timer className="mt-0.5 size-5 text-amber-300" />
+              <div>
+                <h3 className="font-display text-lg font-semibold text-amber-200">
+                  Rent time finished
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Your bot has been suspended because the subscription expired. Pick a plan below
+                  with your gold to renew and bring it back online — your configuration is kept.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+
         {/* Monitoring + Console */}
         <section className="mt-6 grid gap-4 lg:grid-cols-3">
           <MetricCard
