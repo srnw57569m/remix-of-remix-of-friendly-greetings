@@ -28,6 +28,16 @@ const styles: Record<string, { dot: string; ring: string; text: string }> = {
     ring: "shadow-[0_0_14px_-4px_oklch(0.8_0_0)]",
     text: "text-slate-300",
   },
+  Expired: {
+    dot: "bg-amber-400",
+    ring: "shadow-[0_0_18px_-2px_oklch(0.78_0.18_70)]",
+    text: "text-amber-300",
+  },
+  Suspended: {
+    dot: "bg-rose-500",
+    ring: "shadow-[0_0_18px_-2px_oklch(0.6_0.24_15)]",
+    text: "text-rose-300",
+  },
 };
 
 export function StatusBadge({ status, className }: { status: BotStatus; className?: string }) {
