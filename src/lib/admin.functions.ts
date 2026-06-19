@@ -146,7 +146,7 @@ export const listAllBots = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let q = supabaseAdmin
       .from("bots")
-      .select("id, bot_name, status, subscription_status, created_at, user_id")
+      .select("id, bot_name, status, subscription_status, subscription_expires_at, admin_suspended, admin_suspended_reason, created_at, user_id")
       .order("created_at", { ascending: false })
       .limit(500);
     if (data.search) q = q.ilike("bot_name", `%${data.search}%`);
@@ -165,24 +165,57 @@ export const adminSetBotStatus = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) =>
     z.object({
       botId: z.string().uuid(),
-      action: z.enum(["start", "stop", "restart", "suspend"]),
+      action: z.enum(["start", "stop", "restart", "suspend", "unsuspend"]),
+      reason: z.string().trim().max(500).optional(),
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
+    if (data.action === "suspend" && !data.reason) {
+      throw new Error("A reason is required to suspend a bot.");
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const status =
-      data.action === "stop" ? "Offline" :
-      data.action === "suspend" ? "Suspended" :
-      "Starting";
-    const patch: any = { status };
-    if (data.action === "restart") patch.last_restart_at = new Date().toISOString();
+
+    // Try the VPS agent so the bot actually starts/stops on the server
+    try {
+      const { agent, isAgentConfigured } = await import("./vps-agent.server");
+      if (isAgentConfigured()) {
+        if (data.action === "start") await agent.start(data.botId);
+        else if (data.action === "stop" || data.action === "suspend") await agent.stop(data.botId);
+        else if (data.action === "restart") await agent.restart(data.botId);
+        else if (data.action === "unsuspend") {
+          // Don't auto-start on unsuspend — user/admin must explicitly start
+        }
+      }
+    } catch {
+      // best-effort; reflect DB state regardless
+    }
+
+    const patch: any = {};
+    if (data.action === "stop") patch.status = "Offline";
+    else if (data.action === "suspend") {
+      patch.status = "Suspended";
+      patch.admin_suspended = true;
+      patch.admin_suspended_reason = data.reason ?? null;
+      patch.admin_suspended_at = new Date().toISOString();
+    } else if (data.action === "unsuspend") {
+      patch.admin_suspended = false;
+      patch.admin_suspended_reason = null;
+      patch.admin_suspended_at = null;
+      patch.status = "Offline";
+    } else if (data.action === "restart") {
+      patch.status = "Starting";
+      patch.last_restart_at = new Date().toISOString();
+    } else {
+      patch.status = "Starting";
+    }
     const { error } = await supabaseAdmin.from("bots").update(patch).eq("id", data.botId);
     if (error) throw new Error(error.message);
     await supabaseAdmin.from("activity_logs").insert({
       user_id: context.userId,
       bot_id: data.botId,
       action: `admin_bot_${data.action}`,
+      detail: data.action === "suspend" ? `reason: ${data.reason}` : null,
     });
     return { ok: true };
   });
