@@ -885,10 +885,16 @@ function PlansCard({
       toast.success(`Plan activated · ${res.balanceAfter}g left`);
       qc.invalidateQueries({ queryKey: ["wallet"] });
       onChange();
+      setPending(null);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      toast.error(e.message);
+      setPending(null);
+    },
   });
   const balance = wallet?.balance ?? 0;
+  const [pending, setPending] = useState<{ duration: PlanDuration; label: string; price: number } | null>(null);
+
   return (
     <div className={`glass-strong rounded-3xl p-6 ${highlight ? "border border-amber-500/40" : ""}`}>
       <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
@@ -909,7 +915,7 @@ function PlansCard({
             <button
               key={p.duration}
               disabled={locked || !canAfford || mutation.isPending}
-              onClick={() => mutation.mutate(p.duration as PlanDuration)}
+              onClick={() => setPending({ duration: p.duration as PlanDuration, label: p.label, price: p.price })}
               className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <span className="font-medium">{p.label}</span>
@@ -918,6 +924,47 @@ function PlansCard({
           );
         })}
       </div>
+
+      <AlertDialog open={!!pending} onOpenChange={(o) => !o && !mutation.isPending && setPending(null)}>
+        <AlertDialogContent className="glass-strong border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm renewal</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p>
+                  Are you sure you want to spend{" "}
+                  <span className="font-mono font-semibold text-amber-300">{pending?.price}g</span> for{" "}
+                  <span className="font-semibold text-foreground">{pending?.label}</span> of bot rent?
+                </p>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Current balance</span>
+                    <span className="font-mono">{balance}g</span>
+                  </div>
+                  <div className="mt-1 flex justify-between">
+                    <span className="text-muted-foreground">After purchase</span>
+                    <span className="font-mono text-emerald-300">{balance - (pending?.price ?? 0)}g</span>
+                  </div>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-full" disabled={mutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={mutation.isPending}
+              onClick={() => pending && mutation.mutate(pending.duration)}
+              className="rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90"
+            >
+              {mutation.isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+              Confirm — Pay {pending?.price}g
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
     </div>
   );
 }
