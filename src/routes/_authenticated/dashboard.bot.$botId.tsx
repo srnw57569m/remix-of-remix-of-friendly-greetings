@@ -186,7 +186,8 @@ function BotControlPanel() {
   const adminSuspendReason: string | null = (bot as any).admin_suspended_reason ?? null;
   const rentExpired = Boolean(
     !adminSuspended &&
-      (bot.status === "Suspended" ||
+      (bot.status === "Expired" ||
+        bot.status === "Suspended" ||
         bot.subscription_status === "Expired" ||
         (bot.subscription_expires_at && new Date(bot.subscription_expires_at).getTime() < Date.now())),
   );
@@ -352,6 +353,8 @@ function BotControlPanel() {
             description="Change the in-game owner username for this bot."
             updateConfigFn={updateConfigFn}
             onSuccess={invalidate}
+            locked={controlsDisabled}
+            lockReason={adminSuspended ? "Editing locked while bot is admin-suspended." : "Renew your plan to edit this bot."}
             fields={[{ key: "ownerUsername", label: "Owner username", placeholder: "OwnerName" }]}
           />
 
@@ -368,6 +371,8 @@ function BotControlPanel() {
             description="Icecast credentials embedded in config.json."
             updateConfigFn={updateConfigFn}
             onSuccess={invalidate}
+            locked={controlsDisabled}
+            lockReason={adminSuspended ? "Editing locked while bot is admin-suspended." : "Renew your plan to edit this bot."}
             fields={[
               { key: "icecastServer", label: "Icecast server" },
               { key: "icecastPort", label: "Port", type: "number" },
@@ -383,6 +388,8 @@ function BotControlPanel() {
             addAdminFn={addAdminFn}
             removeAdminFn={removeAdminFn}
             onChange={invalidate}
+            locked={controlsDisabled}
+            lockReason={adminSuspended ? "Editing locked while bot is admin-suspended." : "Renew your plan to manage admins."}
           />
 
           <SubscriptionCard
