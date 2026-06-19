@@ -182,6 +182,15 @@ function BotControlPanel() {
     : "—";
   const admins: string[] = Array.isArray(bot.admins) ? (bot.admins as string[]) : [];
 
+  const adminSuspended = Boolean((bot as any).admin_suspended);
+  const adminSuspendReason: string | null = (bot as any).admin_suspended_reason ?? null;
+  const rentExpired =
+    !adminSuspended &&
+    (bot.status === "Suspended" ||
+      bot.subscription_status === "Expired" ||
+      (bot.subscription_expires_at && new Date(bot.subscription_expires_at).getTime() < Date.now()));
+  const controlsDisabled = adminSuspended || rentExpired;
+
   return (
     <main className="relative min-h-screen overflow-hidden pt-28 pb-24">
       <AnimatedBackground />
@@ -215,6 +224,7 @@ function BotControlPanel() {
               <PrimaryAction
                 onClick={() => statusMutation.mutate("start")}
                 loading={statusMutation.isPending && statusMutation.variables === "start"}
+                disabled={controlsDisabled}
                 icon={<Play className="size-4" />}
                 label="Start"
                 tone="success"
@@ -222,6 +232,7 @@ function BotControlPanel() {
               <PrimaryAction
                 onClick={() => statusMutation.mutate("stop")}
                 loading={statusMutation.isPending && statusMutation.variables === "stop"}
+                disabled={controlsDisabled}
                 icon={<Power className="size-4" />}
                 label="Stop"
                 tone="danger"
@@ -229,6 +240,7 @@ function BotControlPanel() {
               <PrimaryAction
                 onClick={() => statusMutation.mutate("restart")}
                 loading={statusMutation.isPending && statusMutation.variables === "restart"}
+                disabled={controlsDisabled}
                 icon={<RotateCcw className="size-4" />}
                 label="Restart"
                 tone="default"
