@@ -187,6 +187,94 @@ export const createBot = createServerFn({ method: "POST" })
   });
 
 // ============================================================
+//               MODERATION BOT — CREATE
+// ============================================================
+
+export const createModerationBot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => moderationWizardSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const wizard = data as ModerationWizardData;
+
+    // 1) Determine next bot_index
+    const { data: existing, error: idxErr } = await supabase
+      .from("bots")
+      .select("bot_index")
+      .eq("user_id", userId)
+      .order("bot_index", { ascending: false })
+      .limit(1);
+    if (idxErr) throw new Error(`Database error: ${idxErr.message}`);
+    const nextIndex = ((existing?.[0]?.bot_index as number | undefined) ?? 0) + 1;
+    const botName = `ModBot${nextIndex}`;
+    const storagePath = `${userId}/${botName}`;
+
+    // 2) Write moderation config.json + bot_pos.json to user storage
+    const admin = await loadAdmin();
+    const cfgJson = buildModerationConfigJson({
+      token: wizard.botToken,
+      room: wizard.roomId,
+      owner: wizard.ownerUsername,
+      welcomeMessages: wizard.welcomeMessages,
+      byeMessages: wizard.byeMessages,
+      admins: [],
+    });
+    const posJson = defaultModerationBotPos([]);
+
+    const upCfg = await admin.storage.from(USER_BUCKET)
+      .upload(`${storagePath}/config.json`, cfgJson, { upsert: true, contentType: "application/json" });
+    if (upCfg.error) throw new Error(`Failed to write config.json: ${upCfg.error.message}`);
+    const upPos = await admin.storage.from(USER_BUCKET)
+      .upload(`${storagePath}/bot_pos.json`, posJson, { upsert: true, contentType: "application/json" });
+    if (upPos.error) throw new Error(`Failed to write bot_pos.json: ${upPos.error.message}`);
+
+    // 3) Insert bot row
+    const { data: bot, error: insErr } = await supabase
+      .from("bots")
+      .insert({
+        user_id: userId,
+        bot_name: botName,
+        bot_index: nextIndex,
+        bot_type: "moderation",
+        bot_token: wizard.botToken,
+        room_id: wizard.roomId,
+        owner_username: wizard.ownerUsername,
+        welcome_messages: wizard.welcomeMessages,
+        bye_messages: wizard.byeMessages,
+        status: "Created",
+        storage_path: storagePath,
+      } as any)
+      .select("id, bot_name, status, created_at, storage_path")
+      .single();
+    if (insErr) throw new Error(`Database error: ${insErr.message}`);
+
+    // 4) Best-effort deploy via VPS agent
+    const { agent, isAgentConfigured, buildBotConfig } = await loadAgent();
+    let deployed = false;
+    let deployError: string | null = null;
+    if (isAgentConfigured()) {
+      try {
+        await agent.deploy(bot.id, buildBotConfig({
+          bot_type: "moderation",
+          bot_token: wizard.botToken,
+          room_id: wizard.roomId,
+          owner_username: wizard.ownerUsername,
+          welcome_messages: wizard.welcomeMessages,
+          bye_messages: wizard.byeMessages,
+          admins: [],
+        }));
+        deployed = true;
+        await supabase.from("bots").update({ status: "Offline" }).eq("id", bot.id);
+      } catch (e) {
+        deployError = (e as Error).message;
+      }
+    }
+
+    return { ...bot, deployed, deployError };
+  });
+
+
+// ============================================================
 //                  BOT MANAGEMENT SERVER FNS
 // ============================================================
 
