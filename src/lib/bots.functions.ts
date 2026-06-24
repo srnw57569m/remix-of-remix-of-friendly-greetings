@@ -387,7 +387,7 @@ export const updateBotConfig = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: bot, error: loadErr } = await supabase
       .from("bots")
-      .select("id, user_id, storage_path, admins, status, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
+      .select("id, user_id, storage_path, admins, status, bot_type, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
       .eq("id", data.botId)
       .eq("user_id", userId)
       .maybeSingle();
@@ -415,8 +415,46 @@ export const updateBotConfig = createServerFn({ method: "POST" })
       mountPoint: data.mountPoint,
       icecastUsername: data.icecastUsername,
       icecastPassword: data.icecastPassword,
-    });
+    }, data.botId, (bot as any).bot_type);
     await logActivity(supabase, userId, data.botId, "config_updated");
+    return { ok: true as const };
+  });
+
+/** Replace welcome/bye message arrays on a moderation bot. */
+export const updateModerationMessages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      botId: z.string().uuid(),
+      welcomeMessages: z.array(z.string().trim().max(500)).optional(),
+      byeMessages: z.array(z.string().trim().max(500)).optional(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: bot, error: loadErr } = await supabase.from("bots")
+      .select("id, bot_type, storage_path, admins, status, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
+      .eq("id", data.botId).eq("user_id", userId).maybeSingle();
+    if (loadErr) throw new Error(loadErr.message);
+    if (!bot) throw new Error("Bot not found");
+    if ((bot as any).bot_type !== "moderation") throw new Error("Only moderation bots have welcome/bye messages.");
+    assertBotEditable(bot as any);
+
+    const dbPatch: Record<string, unknown> = {};
+    if (data.welcomeMessages !== undefined) dbPatch.welcome_messages = data.welcomeMessages;
+    if (data.byeMessages !== undefined) dbPatch.bye_messages = data.byeMessages;
+    if (Object.keys(dbPatch).length > 0) {
+      const { error } = await supabase.from("bots").update(dbPatch as any)
+        .eq("id", data.botId).eq("user_id", userId);
+      if (error) throw new Error(error.message);
+    }
+
+    await patchModerationInStorage(bot.storage_path, {
+      welcomeMessages: data.welcomeMessages,
+      byeMessages: data.byeMessages,
+    }, data.botId);
+
+    await logActivity(supabase, userId, data.botId, "messages_updated");
     return { ok: true as const };
   });
 
