@@ -53,6 +53,8 @@ import {
 } from "@/lib/bots.functions";
 import { getWallet, purchaseBotPlan, listPlans, type PlanDuration } from "@/lib/wallet.functions";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
+import { MessagesCard } from "@/components/dashboard/MessagesCard";
+import { CommandsCard } from "@/components/dashboard/CommandsCard";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/_authenticated/dashboard/bot/$botId")({
