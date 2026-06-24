@@ -880,11 +880,13 @@ function SubscriptionCard({
 
 function PlansCard({
   botId,
+  botType = "music",
   onChange,
   locked = false,
   highlight = false,
 }: {
   botId: string;
+  botType?: "music" | "moderation";
   onChange: () => void;
   locked?: boolean;
   highlight?: boolean;
@@ -898,8 +900,8 @@ function PlansCard({
     queryFn: () => getWalletFn(),
   });
   const { data: plans } = useQuery({
-    queryKey: ["plans"],
-    queryFn: () => listPlansFn(),
+    queryKey: ["plans", botType],
+    queryFn: () => listPlansFn({ data: { botType } }),
   });
   const mutation = useMutation({
     mutationFn: (duration: PlanDuration) => purchaseFn({ data: { botId, duration } }),
