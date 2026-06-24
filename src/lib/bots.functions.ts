@@ -3,12 +3,19 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 import { wizardSchema, type WizardData } from "./wizard-schema";
+import { moderationWizardSchema, type ModerationWizardData } from "./moderation-wizard-schema";
 import {
   injectConfigJson,
   patchConfigJson,
   type InjectionConfig,
   type PartialBotPatch,
 } from "./bot-template";
+import {
+  buildModerationConfigJson,
+  defaultModerationBotPos,
+  patchModerationConfigJson,
+  patchModerationBotPos,
+} from "./moderation-template";
 
 const TEMPLATE_BUCKET = "bot-templates";
 const TEMPLATE_PREFIX: string = ""; // files live at the root of the bot-templates bucket
