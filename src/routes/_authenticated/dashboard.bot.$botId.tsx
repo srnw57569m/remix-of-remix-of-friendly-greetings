@@ -358,29 +358,43 @@ function BotControlPanel() {
             fields={[{ key: "ownerUsername", label: "Owner username", placeholder: "OwnerName" }]}
           />
 
-          <ConfigCard
-            botId={botId}
-            initial={{
-              icecastServer: bot.icecast_server ?? "",
-              icecastPort: bot.icecast_port != null ? String(bot.icecast_port) : "",
-              mountPoint: bot.mount_point ?? "",
-              icecastUsername: bot.icecast_username ?? "",
-              icecastPassword: "",
-            }}
-            title="Stream configuration"
-            description="Icecast credentials embedded in config.json."
-            updateConfigFn={updateConfigFn}
-            onSuccess={invalidate}
-            locked={controlsDisabled}
-            lockReason={adminSuspended ? "Editing locked while bot is admin-suspended." : "Renew your plan to edit this bot."}
-            fields={[
-              { key: "icecastServer", label: "Icecast server" },
-              { key: "icecastPort", label: "Port", type: "number" },
-              { key: "mountPoint", label: "Mount point" },
-              { key: "icecastUsername", label: "Username" },
-              { key: "icecastPassword", label: "Password", type: "password", placeholder: "Leave blank to keep current" },
-            ]}
-          />
+          {(bot as any).bot_type !== "moderation" && (
+            <ConfigCard
+              botId={botId}
+              initial={{
+                icecastServer: bot.icecast_server ?? "",
+                icecastPort: bot.icecast_port != null ? String(bot.icecast_port) : "",
+                mountPoint: bot.mount_point ?? "",
+                icecastUsername: bot.icecast_username ?? "",
+                icecastPassword: "",
+              }}
+              title="Stream configuration"
+              description="Icecast credentials embedded in config.json."
+              updateConfigFn={updateConfigFn}
+              onSuccess={invalidate}
+              locked={controlsDisabled}
+              lockReason={adminSuspended ? "Editing locked while bot is admin-suspended." : "Renew your plan to edit this bot."}
+              fields={[
+                { key: "icecastServer", label: "Icecast server" },
+                { key: "icecastPort", label: "Port", type: "number" },
+                { key: "mountPoint", label: "Mount point" },
+                { key: "icecastUsername", label: "Username" },
+                { key: "icecastPassword", label: "Password", type: "password", placeholder: "Leave blank to keep current" },
+              ]}
+            />
+          )}
+
+          {(bot as any).bot_type === "moderation" && (
+            <MessagesCard
+              key={`msgs-${(bot as any).welcome_messages?.length ?? 0}-${(bot as any).bye_messages?.length ?? 0}`}
+              botId={botId}
+              welcome={(bot as any).welcome_messages ?? []}
+              bye={(bot as any).bye_messages ?? []}
+              locked={controlsDisabled}
+              lockReason={adminSuspended ? "Editing locked while bot is admin-suspended." : "Renew your plan to edit messages."}
+              onChange={invalidate}
+            />
+          )}
 
           <AdminsCard
             botId={botId}
