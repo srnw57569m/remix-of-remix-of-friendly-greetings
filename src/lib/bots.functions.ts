@@ -469,7 +469,7 @@ export const addBotAdmin = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: bot, error: loadErr } = await supabase.from("bots")
-      .select("id, admins, storage_path, status, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
+      .select("id, admins, storage_path, status, bot_type, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
       .eq("id", data.botId).eq("user_id", userId).maybeSingle();
     if (loadErr) throw new Error(loadErr.message);
     if (!bot) throw new Error("Bot not found");
@@ -480,7 +480,7 @@ export const addBotAdmin = createServerFn({ method: "POST" })
     const { error: upErr } = await supabase.from("bots").update({ admins })
       .eq("id", data.botId).eq("user_id", userId);
     if (upErr) throw new Error(upErr.message);
-    await patchConfigInStorage(bot.storage_path, { admins }, data.botId);
+    await patchConfigInStorage(bot.storage_path, { admins }, data.botId, (bot as any).bot_type);
     await logActivity(supabase, userId, data.botId, "admin_added", data.username);
     return { admins };
   });
@@ -491,7 +491,7 @@ export const removeBotAdmin = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: bot, error: loadErr } = await supabase.from("bots")
-      .select("id, admins, storage_path, status, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
+      .select("id, admins, storage_path, status, bot_type, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
       .eq("id", data.botId).eq("user_id", userId).maybeSingle();
     if (loadErr) throw new Error(loadErr.message);
     if (!bot) throw new Error("Bot not found");
@@ -501,7 +501,7 @@ export const removeBotAdmin = createServerFn({ method: "POST" })
     const { error: upErr } = await supabase.from("bots").update({ admins })
       .eq("id", data.botId).eq("user_id", userId);
     if (upErr) throw new Error(upErr.message);
-    await patchConfigInStorage(bot.storage_path, { admins }, data.botId);
+    await patchConfigInStorage(bot.storage_path, { admins }, data.botId, (bot as any).bot_type);
     await logActivity(supabase, userId, data.botId, "admin_removed", data.username);
     return { admins };
   });
