@@ -6,15 +6,21 @@ export type PlanDuration = "hourly" | "daily" | "weekly" | "monthly" | "yearly";
 
 export const PLAN_ORDER: PlanDuration[] = ["hourly", "daily", "weekly", "monthly", "yearly"];
 
-export const listPlans = createServerFn({ method: "GET" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("plan_prices")
-    .select("duration, label, price, interval_sql, sort_order, updated_at")
-    .order("sort_order", { ascending: true });
-  if (error) throw new Error(error.message);
-  return data ?? [];
-});
+export const listPlans = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z.object({ botType: z.enum(["music", "moderation"]).optional() }).parse(input ?? {}),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const botType = data.botType ?? "music";
+    const { data: rows, error } = await supabaseAdmin
+      .from("plan_prices")
+      .select("bot_type, duration, label, price, interval_sql, sort_order, updated_at")
+      .eq("bot_type", botType)
+      .order("sort_order", { ascending: true });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
 
 export const getWallet = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
