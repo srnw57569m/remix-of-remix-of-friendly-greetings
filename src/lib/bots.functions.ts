@@ -3,12 +3,19 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 import { wizardSchema, type WizardData } from "./wizard-schema";
+import { moderationWizardSchema, type ModerationWizardData } from "./moderation-wizard-schema";
 import {
   injectConfigJson,
   patchConfigJson,
   type InjectionConfig,
   type PartialBotPatch,
 } from "./bot-template";
+import {
+  buildModerationConfigJson,
+  defaultModerationBotPos,
+  patchModerationConfigJson,
+  patchModerationBotPos,
+} from "./moderation-template";
 
 const TEMPLATE_BUCKET = "bot-templates";
 const TEMPLATE_PREFIX: string = ""; // files live at the root of the bot-templates bucket
@@ -180,6 +187,94 @@ export const createBot = createServerFn({ method: "POST" })
   });
 
 // ============================================================
+//               MODERATION BOT — CREATE
+// ============================================================
+
+export const createModerationBot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => moderationWizardSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const wizard = data as ModerationWizardData;
+
+    // 1) Determine next bot_index
+    const { data: existing, error: idxErr } = await supabase
+      .from("bots")
+      .select("bot_index")
+      .eq("user_id", userId)
+      .order("bot_index", { ascending: false })
+      .limit(1);
+    if (idxErr) throw new Error(`Database error: ${idxErr.message}`);
+    const nextIndex = ((existing?.[0]?.bot_index as number | undefined) ?? 0) + 1;
+    const botName = `ModBot${nextIndex}`;
+    const storagePath = `${userId}/${botName}`;
+
+    // 2) Write moderation config.json + bot_pos.json to user storage
+    const admin = await loadAdmin();
+    const cfgJson = buildModerationConfigJson({
+      token: wizard.botToken,
+      room: wizard.roomId,
+      owner: wizard.ownerUsername,
+      welcomeMessages: wizard.welcomeMessages,
+      byeMessages: wizard.byeMessages,
+      admins: [],
+    });
+    const posJson = defaultModerationBotPos([]);
+
+    const upCfg = await admin.storage.from(USER_BUCKET)
+      .upload(`${storagePath}/config.json`, cfgJson, { upsert: true, contentType: "application/json" });
+    if (upCfg.error) throw new Error(`Failed to write config.json: ${upCfg.error.message}`);
+    const upPos = await admin.storage.from(USER_BUCKET)
+      .upload(`${storagePath}/bot_pos.json`, posJson, { upsert: true, contentType: "application/json" });
+    if (upPos.error) throw new Error(`Failed to write bot_pos.json: ${upPos.error.message}`);
+
+    // 3) Insert bot row
+    const { data: bot, error: insErr } = await supabase
+      .from("bots")
+      .insert({
+        user_id: userId,
+        bot_name: botName,
+        bot_index: nextIndex,
+        bot_type: "moderation",
+        bot_token: wizard.botToken,
+        room_id: wizard.roomId,
+        owner_username: wizard.ownerUsername,
+        welcome_messages: wizard.welcomeMessages,
+        bye_messages: wizard.byeMessages,
+        status: "Created",
+        storage_path: storagePath,
+      } as any)
+      .select("id, bot_name, status, created_at, storage_path")
+      .single();
+    if (insErr) throw new Error(`Database error: ${insErr.message}`);
+
+    // 4) Best-effort deploy via VPS agent
+    const { agent, isAgentConfigured, buildBotConfig } = await loadAgent();
+    let deployed = false;
+    let deployError: string | null = null;
+    if (isAgentConfigured()) {
+      try {
+        await agent.deploy(bot.id, buildBotConfig({
+          bot_type: "moderation",
+          bot_token: wizard.botToken,
+          room_id: wizard.roomId,
+          owner_username: wizard.ownerUsername,
+          welcome_messages: wizard.welcomeMessages,
+          bye_messages: wizard.byeMessages,
+          admins: [],
+        }));
+        deployed = true;
+        await supabase.from("bots").update({ status: "Offline" }).eq("id", bot.id);
+      } catch (e) {
+        deployError = (e as Error).message;
+      }
+    }
+
+    return { ...bot, deployed, deployError };
+  });
+
+
+// ============================================================
 //                  BOT MANAGEMENT SERVER FNS
 // ============================================================
 
@@ -230,7 +325,7 @@ export const listBots = createServerFn({ method: "GET" })
     const { data, error } = await supabase
       .from("bots")
       .select(
-        "id, bot_name, bot_index, status, owner_username, created_at, updated_at, last_restart_at, subscription_status, subscription_expires_at, admins, icecast_server, icecast_port, mount_point, icecast_username, room_id, storage_path, admin_suspended, admin_suspended_reason, admin_suspended_at",
+        "id, bot_name, bot_index, status, owner_username, created_at, updated_at, last_restart_at, subscription_status, subscription_expires_at, admins, icecast_server, icecast_port, mount_point, icecast_username, room_id, storage_path, admin_suspended, admin_suspended_reason, admin_suspended_at, bot_type, welcome_messages, bye_messages",
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
@@ -380,7 +475,7 @@ export const updateBotConfig = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: bot, error: loadErr } = await supabase
       .from("bots")
-      .select("id, user_id, storage_path, admins, status, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
+      .select("id, user_id, storage_path, admins, status, bot_type, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
       .eq("id", data.botId)
       .eq("user_id", userId)
       .maybeSingle();
@@ -408,8 +503,46 @@ export const updateBotConfig = createServerFn({ method: "POST" })
       mountPoint: data.mountPoint,
       icecastUsername: data.icecastUsername,
       icecastPassword: data.icecastPassword,
-    });
+    }, data.botId, (bot as any).bot_type);
     await logActivity(supabase, userId, data.botId, "config_updated");
+    return { ok: true as const };
+  });
+
+/** Replace welcome/bye message arrays on a moderation bot. */
+export const updateModerationMessages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      botId: z.string().uuid(),
+      welcomeMessages: z.array(z.string().trim().max(500)).optional(),
+      byeMessages: z.array(z.string().trim().max(500)).optional(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: bot, error: loadErr } = await supabase.from("bots")
+      .select("id, bot_type, storage_path, admins, status, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
+      .eq("id", data.botId).eq("user_id", userId).maybeSingle();
+    if (loadErr) throw new Error(loadErr.message);
+    if (!bot) throw new Error("Bot not found");
+    if ((bot as any).bot_type !== "moderation") throw new Error("Only moderation bots have welcome/bye messages.");
+    assertBotEditable(bot as any);
+
+    const dbPatch: Record<string, unknown> = {};
+    if (data.welcomeMessages !== undefined) dbPatch.welcome_messages = data.welcomeMessages;
+    if (data.byeMessages !== undefined) dbPatch.bye_messages = data.byeMessages;
+    if (Object.keys(dbPatch).length > 0) {
+      const { error } = await supabase.from("bots").update(dbPatch as any)
+        .eq("id", data.botId).eq("user_id", userId);
+      if (error) throw new Error(error.message);
+    }
+
+    await patchModerationInStorage(bot.storage_path, {
+      welcomeMessages: data.welcomeMessages,
+      byeMessages: data.byeMessages,
+    }, data.botId);
+
+    await logActivity(supabase, userId, data.botId, "messages_updated");
     return { ok: true as const };
   });
 
@@ -424,7 +557,7 @@ export const addBotAdmin = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: bot, error: loadErr } = await supabase.from("bots")
-      .select("id, admins, storage_path, status, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
+      .select("id, admins, storage_path, status, bot_type, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
       .eq("id", data.botId).eq("user_id", userId).maybeSingle();
     if (loadErr) throw new Error(loadErr.message);
     if (!bot) throw new Error("Bot not found");
@@ -435,7 +568,7 @@ export const addBotAdmin = createServerFn({ method: "POST" })
     const { error: upErr } = await supabase.from("bots").update({ admins })
       .eq("id", data.botId).eq("user_id", userId);
     if (upErr) throw new Error(upErr.message);
-    await patchConfigInStorage(bot.storage_path, { admins }, data.botId);
+    await patchConfigInStorage(bot.storage_path, { admins }, data.botId, (bot as any).bot_type);
     await logActivity(supabase, userId, data.botId, "admin_added", data.username);
     return { admins };
   });
@@ -446,7 +579,7 @@ export const removeBotAdmin = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: bot, error: loadErr } = await supabase.from("bots")
-      .select("id, admins, storage_path, status, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
+      .select("id, admins, storage_path, status, bot_type, admin_suspended, admin_suspended_reason, subscription_status, subscription_expires_at")
       .eq("id", data.botId).eq("user_id", userId).maybeSingle();
     if (loadErr) throw new Error(loadErr.message);
     if (!bot) throw new Error("Bot not found");
@@ -456,7 +589,7 @@ export const removeBotAdmin = createServerFn({ method: "POST" })
     const { error: upErr } = await supabase.from("bots").update({ admins })
       .eq("id", data.botId).eq("user_id", userId);
     if (upErr) throw new Error(upErr.message);
-    await patchConfigInStorage(bot.storage_path, { admins }, data.botId);
+    await patchConfigInStorage(bot.storage_path, { admins }, data.botId, (bot as any).bot_type);
     await logActivity(supabase, userId, data.botId, "admin_removed", data.username);
     return { admins };
   });
@@ -534,8 +667,22 @@ async function listUserBotFiles(admin: AdminClient, prefix: string): Promise<str
   return out;
 }
 
-async function patchConfigInStorage(storagePath: string, patch: PartialBotPatch, botId?: string) {
+async function patchConfigInStorage(
+  storagePath: string,
+  patch: PartialBotPatch,
+  botId?: string,
+  botType?: string | null,
+) {
   if (Object.values(patch).every((v) => v === undefined)) return;
+  if (botType === "moderation") {
+    // Route admins-only changes through the moderation patcher
+    await patchModerationInStorage(
+      storagePath,
+      { ownerUsername: patch.ownerUsername, admins: patch.admins },
+      botId,
+    );
+    return;
+  }
   const admin = await loadAdmin();
   const cfgPath = storagePath + "/config.json";
   const { data: blob, error: dlErr } = await admin.storage.from(USER_BUCKET).download(cfgPath);
@@ -550,6 +697,45 @@ async function patchConfigInStorage(storagePath: string, patch: PartialBotPatch,
   }
   if (patch.admins !== undefined) {
     await patchMusicbotPosAdmins(storagePath, patch.admins, botId);
+  }
+}
+
+async function patchModerationInStorage(
+  storagePath: string,
+  patch: { ownerUsername?: string; welcomeMessages?: string[]; byeMessages?: string[]; admins?: string[] },
+  botId?: string,
+) {
+  const admin = await loadAdmin();
+  const cfgPath = storagePath + "/config.json";
+  const { data: blob } = await admin.storage.from(USER_BUCKET).download(cfgPath);
+  const currentText = blob ? await blob.text() : "{}";
+  const nextCfg = patchModerationConfigJson(currentText, patch);
+  const { error: upErr } = await admin.storage.from(USER_BUCKET)
+    .upload(cfgPath, nextCfg, { upsert: true, contentType: "application/json" });
+  if (upErr) throw new Error("Cannot write config.json: " + upErr.message);
+
+  if (patch.admins !== undefined) {
+    const posPath = storagePath + "/bot_pos.json";
+    const { data: posBlob } = await admin.storage.from(USER_BUCKET).download(posPath);
+    const posText = posBlob ? await posBlob.text() : "{}";
+    const nextPos = patchModerationBotPos(posText, patch.admins);
+    const { error: upPosErr } = await admin.storage.from(USER_BUCKET)
+      .upload(posPath, nextPos, { upsert: true, contentType: "application/json" });
+    if (upPosErr) throw new Error("Cannot write bot_pos.json: " + upPosErr.message);
+    if (botId) {
+      try {
+        const { agent, isAgentConfigured } = await loadAgent();
+        if (isAgentConfigured()) {
+          await agent.updateFile(botId, "config.json", nextCfg);
+          await agent.updateFile(botId, "bot_pos.json", nextPos);
+        }
+      } catch { /* best-effort */ }
+    }
+  } else if (botId) {
+    try {
+      const { agent, isAgentConfigured } = await loadAgent();
+      if (isAgentConfigured()) await agent.updateFile(botId, "config.json", nextCfg);
+    } catch { /* best-effort */ }
   }
 }
 

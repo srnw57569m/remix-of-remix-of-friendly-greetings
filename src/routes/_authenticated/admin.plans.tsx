@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listPlans, updatePlanPrice, type PlanDuration } from "@/lib/wallet.functions";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/plans")({
   component: AdminPlansPage,
@@ -21,14 +22,18 @@ export const Route = createFileRoute("/_authenticated/admin/plans")({
   }),
 });
 
+type BotType = "music" | "moderation";
+
 function AdminPlansPage() {
   const qc = useQueryClient();
   const listFn = useServerFn(listPlans);
   const updateFn = useServerFn(updatePlanPrice);
 
+  const [botType, setBotType] = useState<BotType>("music");
+
   const { data: plans, isLoading } = useQuery({
-    queryKey: ["plans"],
-    queryFn: () => listFn(),
+    queryKey: ["plans", botType],
+    queryFn: () => listFn({ data: { botType } }),
   });
 
   const [draft, setDraft] = useState<Record<string, number>>({});
@@ -43,10 +48,10 @@ function AdminPlansPage() {
 
   const mutation = useMutation({
     mutationFn: (vars: { duration: PlanDuration; price: number }) =>
-      updateFn({ data: vars }),
+      updateFn({ data: { ...vars, botType } }),
     onSuccess: (_d, vars) => {
-      toast.success(`${vars.duration} updated to ${vars.price}g`);
-      qc.invalidateQueries({ queryKey: ["plans"] });
+      toast.success(`${botType} · ${vars.duration} updated to ${vars.price}g`);
+      qc.invalidateQueries({ queryKey: ["plans", botType] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -61,6 +66,21 @@ function AdminPlansPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           Edit how much gold each rental duration costs. Changes apply instantly to every user.
         </p>
+        <div className="mt-4 inline-flex rounded-full border border-white/10 bg-white/5 p-1">
+          {(["music", "moderation"] as BotType[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setBotType(t)}
+              className={cn(
+                "rounded-full px-4 py-1.5 text-xs font-semibold capitalize transition-colors",
+                botType === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t} bot
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="glass-strong rounded-3xl p-6">
@@ -73,7 +93,7 @@ function AdminPlansPage() {
               const changed = value !== p.price;
               return (
                 <div
-                  key={p.duration}
+                  key={`${botType}-${p.duration}`}
                   className="flex flex-wrap items-end gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
                 >
                   <div className="min-w-[140px]">

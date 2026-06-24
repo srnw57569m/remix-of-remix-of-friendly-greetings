@@ -6,15 +6,21 @@ export type PlanDuration = "hourly" | "daily" | "weekly" | "monthly" | "yearly";
 
 export const PLAN_ORDER: PlanDuration[] = ["hourly", "daily", "weekly", "monthly", "yearly"];
 
-export const listPlans = createServerFn({ method: "GET" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("plan_prices")
-    .select("duration, label, price, interval_sql, sort_order, updated_at")
-    .order("sort_order", { ascending: true });
-  if (error) throw new Error(error.message);
-  return data ?? [];
-});
+export const listPlans = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z.object({ botType: z.enum(["music", "moderation"]).optional() }).parse(input ?? {}),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const botType = data.botType ?? "music";
+    const { data: rows, error } = await supabaseAdmin
+      .from("plan_prices")
+      .select("bot_type, duration, label, price, interval_sql, sort_order, updated_at")
+      .eq("bot_type", botType)
+      .order("sort_order", { ascending: true });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
 
 export const getWallet = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -50,10 +56,10 @@ export const purchaseBotPlan = createServerFn({ method: "POST" })
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Block renewals on admin-suspended bots
+    // Block renewals on admin-suspended bots & resolve bot_type for pricing
     const { data: botRow } = await supabaseAdmin
       .from("bots")
-      .select("admin_suspended, admin_suspended_reason, user_id")
+      .select("admin_suspended, admin_suspended_reason, user_id, bot_type")
       .eq("id", data.botId).maybeSingle();
     if (!botRow || botRow.user_id !== userId) throw new Error("Bot not found");
     if (botRow.admin_suspended) {
@@ -61,10 +67,12 @@ export const purchaseBotPlan = createServerFn({ method: "POST" })
         `Bot is suspended by admin${botRow.admin_suspended_reason ? `: ${botRow.admin_suspended_reason}` : ""}. You can't renew until an admin lifts the suspension.`,
       );
     }
+    const botType = (botRow as any).bot_type === "moderation" ? "moderation" : "music";
 
     const { data: plan, error: planErr } = await supabaseAdmin
       .from("plan_prices")
       .select("price, interval_sql")
+      .eq("bot_type", botType)
       .eq("duration", data.duration)
       .maybeSingle();
     if (planErr) throw new Error(planErr.message);
@@ -124,6 +132,7 @@ export const updatePlanPrice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z.object({
+      botType: z.enum(["music", "moderation"]).default("music"),
       duration: z.enum(["hourly", "daily", "weekly", "monthly", "yearly"]),
       price: z.coerce.number().int().min(0).max(10_000_000),
       label: z.string().trim().min(1).max(64).optional(),
@@ -151,13 +160,14 @@ export const updatePlanPrice = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin
       .from("plan_prices")
       .update(patch)
+      .eq("bot_type", data.botType)
       .eq("duration", data.duration);
     if (error) throw new Error(error.message);
 
     await supabaseAdmin.from("activity_logs").insert({
       user_id: userId,
       action: "admin_update_plan_price",
-      detail: `${data.duration} -> ${data.price}g`,
+      detail: `${data.botType}/${data.duration} -> ${data.price}g`,
     });
     return { ok: true };
   });
