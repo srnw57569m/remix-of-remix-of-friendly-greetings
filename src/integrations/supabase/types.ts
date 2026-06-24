@@ -58,14 +58,16 @@ export type Database = {
           bot_index: number
           bot_name: string
           bot_token: string
+          bot_type: string
+          bye_messages: Json
           created_at: string
-          icecast_password: string
-          icecast_port: number
-          icecast_server: string
-          icecast_username: string
+          icecast_password: string | null
+          icecast_port: number | null
+          icecast_server: string | null
+          icecast_username: string | null
           id: string
           last_restart_at: string | null
-          mount_point: string
+          mount_point: string | null
           owner_username: string
           plan_duration: string | null
           room_id: string
@@ -75,6 +77,7 @@ export type Database = {
           subscription_status: string
           updated_at: string
           user_id: string
+          welcome_messages: Json
         }
         Insert: {
           admin_suspended?: boolean
@@ -84,14 +87,16 @@ export type Database = {
           bot_index: number
           bot_name: string
           bot_token: string
+          bot_type?: string
+          bye_messages?: Json
           created_at?: string
-          icecast_password: string
-          icecast_port: number
-          icecast_server: string
-          icecast_username: string
+          icecast_password?: string | null
+          icecast_port?: number | null
+          icecast_server?: string | null
+          icecast_username?: string | null
           id?: string
           last_restart_at?: string | null
-          mount_point: string
+          mount_point?: string | null
           owner_username: string
           plan_duration?: string | null
           room_id: string
@@ -101,6 +106,7 @@ export type Database = {
           subscription_status?: string
           updated_at?: string
           user_id: string
+          welcome_messages?: Json
         }
         Update: {
           admin_suspended?: boolean
@@ -110,14 +116,16 @@ export type Database = {
           bot_index?: number
           bot_name?: string
           bot_token?: string
+          bot_type?: string
+          bye_messages?: Json
           created_at?: string
-          icecast_password?: string
-          icecast_port?: number
-          icecast_server?: string
-          icecast_username?: string
+          icecast_password?: string | null
+          icecast_port?: number | null
+          icecast_server?: string | null
+          icecast_username?: string | null
           id?: string
           last_restart_at?: string | null
-          mount_point?: string
+          mount_point?: string | null
           owner_username?: string
           plan_duration?: string | null
           room_id?: string
@@ -127,6 +135,7 @@ export type Database = {
           subscription_status?: string
           updated_at?: string
           user_id?: string
+          welcome_messages?: Json
         }
         Relationships: []
       }
@@ -159,6 +168,7 @@ export type Database = {
       }
       plan_prices: {
         Row: {
+          bot_type: string
           duration: string
           interval_sql: string
           label: string
@@ -168,6 +178,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          bot_type?: string
           duration: string
           interval_sql: string
           label: string
@@ -177,6 +188,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          bot_type?: string
           duration?: string
           interval_sql?: string
           label?: string
