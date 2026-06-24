@@ -579,8 +579,22 @@ async function listUserBotFiles(admin: AdminClient, prefix: string): Promise<str
   return out;
 }
 
-async function patchConfigInStorage(storagePath: string, patch: PartialBotPatch, botId?: string) {
+async function patchConfigInStorage(
+  storagePath: string,
+  patch: PartialBotPatch,
+  botId?: string,
+  botType?: string | null,
+) {
   if (Object.values(patch).every((v) => v === undefined)) return;
+  if (botType === "moderation") {
+    // Route admins-only changes through the moderation patcher
+    await patchModerationInStorage(
+      storagePath,
+      { ownerUsername: patch.ownerUsername, admins: patch.admins },
+      botId,
+    );
+    return;
+  }
   const admin = await loadAdmin();
   const cfgPath = storagePath + "/config.json";
   const { data: blob, error: dlErr } = await admin.storage.from(USER_BUCKET).download(cfgPath);
@@ -595,6 +609,45 @@ async function patchConfigInStorage(storagePath: string, patch: PartialBotPatch,
   }
   if (patch.admins !== undefined) {
     await patchMusicbotPosAdmins(storagePath, patch.admins, botId);
+  }
+}
+
+async function patchModerationInStorage(
+  storagePath: string,
+  patch: { ownerUsername?: string; welcomeMessages?: string[]; byeMessages?: string[]; admins?: string[] },
+  botId?: string,
+) {
+  const admin = await loadAdmin();
+  const cfgPath = storagePath + "/config.json";
+  const { data: blob } = await admin.storage.from(USER_BUCKET).download(cfgPath);
+  const currentText = blob ? await blob.text() : "{}";
+  const nextCfg = patchModerationConfigJson(currentText, patch);
+  const { error: upErr } = await admin.storage.from(USER_BUCKET)
+    .upload(cfgPath, nextCfg, { upsert: true, contentType: "application/json" });
+  if (upErr) throw new Error("Cannot write config.json: " + upErr.message);
+
+  if (patch.admins !== undefined) {
+    const posPath = storagePath + "/bot_pos.json";
+    const { data: posBlob } = await admin.storage.from(USER_BUCKET).download(posPath);
+    const posText = posBlob ? await posBlob.text() : "{}";
+    const nextPos = patchModerationBotPos(posText, patch.admins);
+    const { error: upPosErr } = await admin.storage.from(USER_BUCKET)
+      .upload(posPath, nextPos, { upsert: true, contentType: "application/json" });
+    if (upPosErr) throw new Error("Cannot write bot_pos.json: " + upPosErr.message);
+    if (botId) {
+      try {
+        const { agent, isAgentConfigured } = await loadAgent();
+        if (isAgentConfigured()) {
+          await agent.updateFile(botId, "config.json", nextCfg);
+          await agent.updateFile(botId, "bot_pos.json", nextPos);
+        }
+      } catch { /* best-effort */ }
+    }
+  } else if (botId) {
+    try {
+      const { agent, isAgentConfigured } = await loadAgent();
+      if (isAgentConfigured()) await agent.updateFile(botId, "config.json", nextCfg);
+    } catch { /* best-effort */ }
   }
 }
 
