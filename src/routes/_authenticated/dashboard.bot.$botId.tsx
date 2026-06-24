@@ -417,7 +417,7 @@ function BotControlPanel() {
             canManage={isAdmin}
           />
 
-          <PlansCard botId={botId} onChange={invalidate} locked={adminSuspended} highlight={rentExpired} />
+          <PlansCard botId={botId} botType={(bot as any).bot_type ?? "music"} onChange={invalidate} locked={adminSuspended} highlight={rentExpired} />
         </div>
 
         {/* Activity */}
