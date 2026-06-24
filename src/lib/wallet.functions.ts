@@ -56,10 +56,10 @@ export const purchaseBotPlan = createServerFn({ method: "POST" })
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Block renewals on admin-suspended bots
+    // Block renewals on admin-suspended bots & resolve bot_type for pricing
     const { data: botRow } = await supabaseAdmin
       .from("bots")
-      .select("admin_suspended, admin_suspended_reason, user_id")
+      .select("admin_suspended, admin_suspended_reason, user_id, bot_type")
       .eq("id", data.botId).maybeSingle();
     if (!botRow || botRow.user_id !== userId) throw new Error("Bot not found");
     if (botRow.admin_suspended) {
@@ -67,10 +67,12 @@ export const purchaseBotPlan = createServerFn({ method: "POST" })
         `Bot is suspended by admin${botRow.admin_suspended_reason ? `: ${botRow.admin_suspended_reason}` : ""}. You can't renew until an admin lifts the suspension.`,
       );
     }
+    const botType = (botRow as any).bot_type === "moderation" ? "moderation" : "music";
 
     const { data: plan, error: planErr } = await supabaseAdmin
       .from("plan_prices")
       .select("price, interval_sql")
+      .eq("bot_type", botType)
       .eq("duration", data.duration)
       .maybeSingle();
     if (planErr) throw new Error(planErr.message);
