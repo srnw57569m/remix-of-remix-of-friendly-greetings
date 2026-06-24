@@ -237,7 +237,7 @@ export const listBots = createServerFn({ method: "GET" })
     const { data, error } = await supabase
       .from("bots")
       .select(
-        "id, bot_name, bot_index, status, owner_username, created_at, updated_at, last_restart_at, subscription_status, subscription_expires_at, admins, icecast_server, icecast_port, mount_point, icecast_username, room_id, storage_path, admin_suspended, admin_suspended_reason, admin_suspended_at",
+        "id, bot_name, bot_index, status, owner_username, created_at, updated_at, last_restart_at, subscription_status, subscription_expires_at, admins, icecast_server, icecast_port, mount_point, icecast_username, room_id, storage_path, admin_suspended, admin_suspended_reason, admin_suspended_at, bot_type, welcome_messages, bye_messages",
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
