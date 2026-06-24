@@ -21,7 +21,7 @@ import {
 import { connectHighrise, disconnectHighrise, getMyProfile } from "@/lib/profile.functions";
 import { getWallet } from "@/lib/wallet.functions";
 
-const ROOM_LINK = "https://high.rs/world?id=6894bd39e3e4a405517cb530";
+const ROOM_LINK = "https://high.rs/world?id=6894bd39e3e4a405517cb530&ownedRoomId=6a3440c4192029dd76b6412a&invite_id=6a3a8bf2728a787d170bfcd8";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({
