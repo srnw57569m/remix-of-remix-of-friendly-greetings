@@ -132,6 +132,7 @@ export const updatePlanPrice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z.object({
+      botType: z.enum(["music", "moderation"]).default("music"),
       duration: z.enum(["hourly", "daily", "weekly", "monthly", "yearly"]),
       price: z.coerce.number().int().min(0).max(10_000_000),
       label: z.string().trim().min(1).max(64).optional(),
@@ -159,13 +160,14 @@ export const updatePlanPrice = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin
       .from("plan_prices")
       .update(patch)
+      .eq("bot_type", data.botType)
       .eq("duration", data.duration);
     if (error) throw new Error(error.message);
 
     await supabaseAdmin.from("activity_logs").insert({
       user_id: userId,
       action: "admin_update_plan_price",
-      detail: `${data.duration} -> ${data.price}g`,
+      detail: `${data.botType}/${data.duration} -> ${data.price}g`,
     });
     return { ok: true };
   });
