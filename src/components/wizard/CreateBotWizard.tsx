@@ -49,7 +49,7 @@ export function CreateBotWizard({
   const trialStatusFn = useServerFn(getTrialStatus);
   const qc = useQueryClient();
 
-  const { data: plans = [] } = useQuery({ queryKey: ["plans"], queryFn: () => listPlansFn() });
+  const { data: plans = [] } = useQuery({ queryKey: ["plans", "music"], queryFn: () => listPlansFn({ data: { botType: "music" } }) });
   const { data: wallet } = useQuery({ queryKey: ["wallet-summary"], queryFn: () => walletFn() });
   const { data: trial } = useQuery({ queryKey: ["trial-status"], queryFn: () => trialStatusFn() });
 
