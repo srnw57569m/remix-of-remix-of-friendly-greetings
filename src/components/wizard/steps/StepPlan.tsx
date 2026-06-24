@@ -21,7 +21,7 @@ export function StepPlan({
   const walletFn = useServerFn(getWallet);
   const profileFn = useServerFn(getMyProfile);
 
-  const { data: plans = [] } = useQuery({ queryKey: ["plans"], queryFn: () => listFn() });
+  const { data: plans = [] } = useQuery({ queryKey: ["plans", "music"], queryFn: () => listFn({ data: { botType: "music" } }) });
   const { data: trial } = useQuery({ queryKey: ["trial-status"], queryFn: () => trialFn() });
   const { data: wallet } = useQuery({ queryKey: ["wallet-summary"], queryFn: () => walletFn() });
   const { data: profile } = useQuery({ queryKey: ["my-profile"], queryFn: () => profileFn() });
