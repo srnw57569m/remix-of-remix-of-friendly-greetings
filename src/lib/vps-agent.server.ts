@@ -94,31 +94,46 @@ export const agent = {
     ),
 };
 
-/** Build the config.json object the bot expects from a DB bot row. */
+/** Build the config.json object the bot expects from a DB bot row.
+ *  Handles both music and moderation bot types. */
 export function buildBotConfig(bot: {
+  bot_type?: string | null;
   bot_token: string;
   room_id: string;
   owner_username: string;
-  icecast_server: string;
-  icecast_port: number;
-  mount_point: string;
-  icecast_username: string;
-  icecast_password: string;
-  admins?: string[] | null;
+  icecast_server?: string | null;
+  icecast_port?: number | null;
+  mount_point?: string | null;
+  icecast_username?: string | null;
+  icecast_password?: string | null;
+  admins?: unknown;
+  welcome_messages?: unknown;
+  bye_messages?: unknown;
 }) {
+  const admins = Array.isArray(bot.admins) ? (bot.admins as string[]) : [];
+  if (bot.bot_type === "moderation") {
+    return {
+      token: bot.bot_token,
+      room: bot.room_id,
+      owner: bot.owner_username,
+      welcome_message: Array.isArray(bot.welcome_messages) ? bot.welcome_messages : [],
+      bye_message: Array.isArray(bot.bye_messages) ? bot.bye_messages : [],
+      admins,
+    };
+  }
   return {
     bot: {
       token: bot.bot_token,
       room_id: bot.room_id,
       owner: bot.owner_username,
-      admins: Array.isArray(bot.admins) ? bot.admins : [],
+      admins,
     },
     radio: {
-      icecast_server: bot.icecast_server,
-      icecast_port: bot.icecast_port,
-      mount_point: bot.mount_point,
-      username: bot.icecast_username,
-      password: bot.icecast_password,
+      icecast_server: bot.icecast_server ?? "",
+      icecast_port: bot.icecast_port ?? 8000,
+      mount_point: bot.mount_point ?? "",
+      username: bot.icecast_username ?? "source",
+      password: bot.icecast_password ?? "",
     },
   };
 }
