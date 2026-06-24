@@ -361,10 +361,10 @@ function BotControlPanel() {
           <ConfigCard
             botId={botId}
             initial={{
-              icecastServer: bot.icecast_server,
-              icecastPort: String(bot.icecast_port),
-              mountPoint: bot.mount_point,
-              icecastUsername: bot.icecast_username,
+              icecastServer: bot.icecast_server ?? "",
+              icecastPort: bot.icecast_port != null ? String(bot.icecast_port) : "",
+              mountPoint: bot.mount_point ?? "",
+              icecastUsername: bot.icecast_username ?? "",
               icecastPassword: "",
             }}
             title="Stream configuration"
