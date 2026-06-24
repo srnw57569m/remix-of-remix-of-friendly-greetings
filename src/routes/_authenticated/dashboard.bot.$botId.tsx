@@ -441,6 +441,12 @@ function BotControlPanel() {
           </ul>
         </section>
 
+        {(bot as any).bot_type === "moderation" && (
+          <section className="mt-8">
+            <CommandsCard />
+          </section>
+        )}
+
         {/* Danger zone */}
         <section className="glass mt-8 flex flex-col items-start justify-between gap-3 rounded-3xl border border-rose-500/30 p-6 sm:flex-row sm:items-center">
           <div>
